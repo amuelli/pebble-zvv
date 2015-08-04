@@ -20,13 +20,19 @@
         "configurable"
     ],
     "companyName": "Alexander M\u00fclli",
-    "longName": "PEBBLEZVV",
+    "longName": "ZVV",
     "projectType": "native",
     "resources": {
         "media": [
             {
-                "file": "images/cablecar.png",
-                "name": "ICON_CABLE",
+                "file": "images/tram.png",
+                "menuIcon": true,
+                "name": "ICON_TRAM",
+                "type": "png"
+            },
+            {
+                "file": "images/bus.png",
+                "name": "ICON_BUS",
                 "type": "png"
             },
             {
@@ -35,24 +41,19 @@
                 "type": "png"
             },
             {
+                "file": "images/cablecar.png",
+                "name": "ICON_CABLE",
+                "type": "png"
+            },
+            {
                 "file": "images/train.png",
                 "name": "ICON_TRAIN",
-                "type": "png"
-            },
-            {
-                "file": "images/tram.png",
-                "name": "ICON_TRAM",
-                "type": "png"
-            },
-            {
-                "file": "images/bus.png",
-                "name": "ICON_BUS",
                 "type": "png"
             }
         ]
     },
     "sdkVersion": "3",
-    "shortName": "PEBBLEZVV",
+    "shortName": "ZVV",
     "targetPlatforms": [
         "basalt"
     ],
