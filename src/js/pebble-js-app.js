@@ -106,14 +106,49 @@ function getStations(x, y) {
   );
 }
 
-function unescapeHTML(input) {
-  input = input.replace(/&#196;/g, 'Ä');
-  input = input.replace(/&#214;/g, 'Ö');
-  input = input.replace(/&#220;/g, 'Ü');
-  input = input.replace(/&#228;/g, 'ä');
-  input = input.replace(/&#245;/g, 'ö');
-  input = input.replace(/&#252;/g, 'ü');
-  return input;
+
+
+function decodeHTMLSpecialCharacters(input) {
+  //mapping of encoding of special character relevant to German, French and Italian
+  var htmlEncoding = {
+    '192' : 'À',
+    '193' : 'Á',
+    '194' : 'Â',
+    '196' : 'Ä',
+    '199' : 'Ç',
+    '200' : 'È',
+    '201' : 'É',
+    '202' : 'Ê',
+    '204' : 'Ì',
+    '205' : 'Í',
+    '210' : 'Ò',
+    '211' : 'Ó',
+    '212' : 'Ô',
+    '214' : 'Ö',
+    '220' : 'Ü',
+    '223' : 'ß',
+    '224' : 'à',
+    '225' : 'á',
+    '226' : 'â',
+    '228' : 'ä',
+    '231' : 'ç',
+    '232' : 'è',
+    '233' : 'é',
+    '234' : 'ê',
+    '236' : 'ì',
+    '237' : 'í',
+    '242' : 'ò',
+    '243' : 'ó',
+    '244' : 'ô',
+    '246' : 'ö',
+    '249' : 'ù',
+    '250' : 'ú',
+    '251' : 'û',
+    '252' : 'ü'
+  };
+  return input.replace(/&#(\d{2,3});/g, function(match, p1){
+    return htmlEncoding[p1];
+  });
 }
 
 // get departures of station from inofficial ZVV API
@@ -124,7 +159,7 @@ function getDeparturesZVV(stationId) {
     function(responseText) {
       //console.log(responseText);
       var json = JSON.parse(responseText);
-      var stationName = unescapeHTML(json.station.name);
+      var stationName = decodeHTMLSpecialCharacters(json.station.name);
       console.log(stationName);
       //var departures = json.connections.slice(0,9);
       var departures = json.connections;
@@ -149,7 +184,7 @@ function getDeparturesZVV(stationId) {
         var icon = dep.product.icon;
         icon = icon.replace(/^icon_/, '');
         
-        var direction = unescapeHTML(dep.product.direction);
+        var direction = decodeHTMLSpecialCharacters(dep.product.direction);
         // shorten direction names
         direction = direction.replace(/^Basel, /, '');
         direction = direction.replace(/^Bern, /, '');

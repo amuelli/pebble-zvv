@@ -25,19 +25,19 @@
     "resources": {
         "media": [
             {
+                "file": "images/boat.png",
+                "name": "ICON_BOAT",
+                "type": "png"
+            },
+            {
                 "file": "images/tram.png",
                 "menuIcon": true,
                 "name": "ICON_TRAM",
                 "type": "png"
             },
             {
-                "file": "images/bus.png",
-                "name": "ICON_BUS",
-                "type": "png"
-            },
-            {
-                "file": "images/boat.png",
-                "name": "ICON_BOAT",
+                "file": "images/train.png",
+                "name": "ICON_TRAIN",
                 "type": "png"
             },
             {
@@ -46,8 +46,8 @@
                 "type": "png"
             },
             {
-                "file": "images/train.png",
-                "name": "ICON_TRAIN",
+                "file": "images/bus.png",
+                "name": "ICON_BUS",
                 "type": "png"
             }
         ]
