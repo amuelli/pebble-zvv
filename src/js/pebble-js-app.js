@@ -285,3 +285,8 @@ Pebble.addEventListener("appmessage", function(e) {
       break;
   }
 });
+
+Pebble.addEventListener('showConfiguration', function(e) {
+  // Show config page
+  Pebble.openURL('http://pebble-zvv-config.muel.li/');
+});
