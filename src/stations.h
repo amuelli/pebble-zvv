@@ -2,7 +2,7 @@
 
 typedef struct {
   int id;
-	char* name;
+  char* name;
   int distance;
 } STA_Item;
 

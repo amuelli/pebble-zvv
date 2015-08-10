@@ -1,9 +1,9 @@
 #pragma once
 
 typedef struct {
-	int id;
-	char* name;
-	char* type;
+  int id;
+  char* name;
+  char* type;
   int color_fg;
   int color_bg;
   char* to;

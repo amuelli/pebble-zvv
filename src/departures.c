@@ -81,8 +81,6 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
     if (strcmp((char*)deps_items[idx->row].icon, "bus") == 0) {
         graphics_draw_bitmap_in_rect(ctx, s_icon_bus_bitmap, frame); 
-//     } else if (deps_items[idx->row].icon == 512) {
-//         graphics_draw_bitmap_in_rect(ctx, s_icon_tram_bitmap, frame); 
     } else if (strcmp(deps_items[idx->row].icon, "tram") == 0) {
         graphics_draw_bitmap_in_rect(ctx, s_icon_tram_bitmap, frame); 
     } else if (strcmp(deps_items[idx->row].icon, "train") == 0) {
@@ -135,7 +133,7 @@ static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex 
 }
 
 static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *context) {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row); 
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row);
 }
 
 static void main_window_load(Window *window) {
@@ -178,15 +176,15 @@ static void main_window_unload(Window *window) {
   // Destroy TextLayer
   status_bar_layer_destroy(s_status_bar);
   menu_layer_destroy(s_menu_layer);
-}	
+}
 
 static void deps_free_items() {
-	for(int i=0; i<deps_count; i++) {
-		free(deps_items[i].name);
-		free(deps_items[i].time);
+  for(int i=0; i<deps_count; i++) {
+    free(deps_items[i].name);
+    free(deps_items[i].time);
   }
-	free(deps_items);
-	deps_items = NULL;
+  free(deps_items);
+  deps_items = NULL;
 }
 
 /* Public functions */
@@ -212,39 +210,39 @@ void deps_show(int station_id) {
 
 void deps_set_count(int count) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Setting count: %d", count);
-	if(deps_items)
-		deps_free_items();
-	deps_items = malloc(sizeof(DEP_Item)*count);
-	deps_max_count = count;
-	deps_count = 0;
+  if(deps_items)
+    deps_free_items();
+  deps_items = malloc(sizeof(DEP_Item)*count);
+  deps_max_count = count;
+  deps_count = 0;
 }
 
 void deps_set_item(int i, DEP_Item data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "New item %d", i);
-// 	assert(deps_max_count > 0, "Trying to set item while not initialized!");
-// 	assert(deps_max_count > i, "Unexpected item index: %d, max count is %d", i, deps_max_count);
+//   assert(deps_max_count > 0, "Trying to set item while not initialized!");
+//   assert(deps_max_count > i, "Unexpected item index: %d, max count is %d", i, deps_max_count);
   
-	deps_items[i].id = data.id;
+  deps_items[i].id = data.id;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "id %d", data.id);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
-	deps_items[i].name = malloc(strlen(data.name)+5);
-	strcpy(deps_items[i].name, data.name);
+  deps_items[i].name = malloc(strlen(data.name)+5);
+  strcpy(deps_items[i].name, data.name);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "icon %s of size %d", data.icon, strlen(data.icon));
-	deps_items[i].icon = malloc(strlen(data.icon)+5);
-	strcpy(deps_items[i].icon, data.icon);
-	deps_items[i].color_fg = data.color_fg;
-	deps_items[i].color_bg = data.color_bg;
+  deps_items[i].icon = malloc(strlen(data.icon)+5);
+  strcpy(deps_items[i].icon, data.icon);
+  deps_items[i].color_fg = data.color_fg;
+  deps_items[i].color_bg = data.color_bg;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "direction %s of size %d", data.direction, strlen(data.direction));
-	deps_items[i].direction = malloc(strlen(data.direction)+1);
-	strcpy(deps_items[i].direction, data.direction);
+  deps_items[i].direction = malloc(strlen(data.direction)+1);
+  strcpy(deps_items[i].direction, data.direction);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "time %s", data.time);
-	deps_items[i].time = malloc(strlen(data.time)+1);
-	strcpy(deps_items[i].time, data.time);
-	deps_items[i].delay = data.delay;
+  deps_items[i].time = malloc(strlen(data.time)+1);
+  strcpy(deps_items[i].time, data.time);
+  deps_items[i].delay = data.delay;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "delay %d", data.delay);
-	deps_items[i].countdown = data.countdown;
+  deps_items[i].countdown = data.countdown;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "countdown %d", data.countdown);
-	deps_count++;
-	menu_layer_reload_data(s_menu_layer);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", deps_count);
+  deps_count++;
+  menu_layer_reload_data(s_menu_layer);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", deps_count);
 }

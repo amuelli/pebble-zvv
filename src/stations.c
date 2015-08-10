@@ -60,7 +60,7 @@ static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex 
 }
 
 static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *context) {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row); 
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row);
   deps_show(sta_items[idx->row].id);
 }
 
@@ -99,14 +99,14 @@ static void main_window_unload(Window *window) {
   status_bar_layer_destroy(s_status_bar);
   text_layer_destroy(s_text_layer);
   menu_layer_destroy(s_menu_layer);
-}	
+}
 
 static void sta_free_items() {
-	for(int i=0; i<sta_count; i++) {
-		free(sta_items[i].name);
+  for(int i=0; i<sta_count; i++) {
+    free(sta_items[i].name);
   }
-	free(sta_items);
-	sta_items = NULL;
+  free(sta_items);
+  sta_items = NULL;
 }
 
 /* Public functions */
@@ -131,24 +131,24 @@ void sta_show() {
 
 void sta_set_count(int count) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Setting count: %d", count);
-	if(sta_items)
-		sta_free_items();
-	sta_items = malloc(sizeof(STA_Item)*count);
-	sta_max_count = count;
-	sta_count = 0;
+  if(sta_items)
+    sta_free_items();
+  sta_items = malloc(sizeof(STA_Item)*count);
+  sta_max_count = count;
+  sta_count = 0;
 }
 
 void sta_set_item(int i, STA_Item data) {
   if(!layer_get_hidden((Layer *)s_text_layer))
     layer_set_hidden((Layer *)s_text_layer, true);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "New item %d", i);
-	sta_items[i].id = data.id;
+  sta_items[i].id = data.id;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "id %d", data.id);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
-	sta_items[i].name = malloc(strlen(data.name)+5);
-	strcpy(sta_items[i].name, data.name);
-	sta_items[i].distance = data.distance;
-	sta_count++;
-	menu_layer_reload_data(s_menu_layer);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", sta_count);
+  sta_items[i].name = malloc(strlen(data.name)+5);
+  strcpy(sta_items[i].name, data.name);
+  sta_items[i].distance = data.distance;
+  sta_count++;
+  menu_layer_reload_data(s_menu_layer);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", sta_count);
 }
