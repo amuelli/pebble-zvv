@@ -14,6 +14,6 @@ typedef struct {
 
 void deps_init();
 void deps_deinit();
-void deps_show(int);
+void deps_show(int, char*);
 void deps_set_count(int);
 void deps_set_item(int, DEP_Item);

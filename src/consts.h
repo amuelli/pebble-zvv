@@ -31,5 +31,6 @@ enum {
 // Scope codes
 enum {
   SCOPE_STA = 0,
-  SCOPE_DEPS = 1,
+  SCOPE_FAV = 1,
+  SCOPE_DEPS = 2,
 };

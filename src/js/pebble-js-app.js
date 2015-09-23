@@ -77,6 +77,7 @@ function getStations(x, y) {
       var json = JSON.parse(responseText);
       var stations = json.stations;
       
+      //TODO: better handling of unsuccessful requests
       sendMessage({
         "code": 20, // array start/size
         "scope" : 0,
@@ -167,7 +168,7 @@ function getDeparturesZVV(stationId) {
       
       sendMessage({
         "code": 20, // array start/size
-        "scope" : 1,
+        "scope" : 2,
         "count": departures.length
       });
       
@@ -216,7 +217,7 @@ function getDeparturesZVV(stationId) {
         
         var dictionary = {
           "code" : 21,
-          "scope" : 1,
+          "scope" : 2,
           "item" : i,
           "id" : i,
           "name" : name,
@@ -236,7 +237,7 @@ function getDeparturesZVV(stationId) {
       
       sendMessage({
         "code": 22, // array end
-        "scope" : 1,
+        "scope" : 2,
         "count": departures.length
       });
     }
@@ -274,7 +275,7 @@ Pebble.addEventListener("appmessage", function(e) {
       case 0: // nearest stations
           getStations();
           break;
-      case 1: // departures of station
+      case 2: // departures of station
           getDeparturesZVV(e.payload.id);
           break;
       default:
@@ -289,4 +290,38 @@ Pebble.addEventListener("appmessage", function(e) {
 Pebble.addEventListener('showConfiguration', function(e) {
   // Show config page
   Pebble.openURL('http://pebble-zvv-config.muel.li/');
+});
+
+Pebble.addEventListener('webviewclosed', function(e) {
+  var config_data = JSON.parse(e.data);
+  console.log('Config window returned: ' + JSON.stringify(config_data));
+  console.log('Config window returned: ' + JSON.stringify(config_data.stations));
+  var stations = config_data.stations;
+  console.log(stations.length);
+  if(stations.length > 0) {
+    sendMessage({
+      "code": 20, // array start/size
+      "scope" : 1,
+      "count": stations.length
+    });
+    for( var i = 0; i < stations.length; i++) {
+      var station = stations[i];
+
+      // shorten station names
+      station.name = station.name.replace(/^Basel, /, '');
+      station.name = station.name.replace(/^Bern, /, '');
+      station.name = station.name.replace(/^Zürich, /, '');
+      station.name = station.name.replace(/Bahnhof/, 'Bhf');
+
+      var dictionary = {
+        "code" : 21,
+        "scope" : 1,
+        "item" : i,
+        "id" : parseInt(station.id,10),
+        "name" : station.name
+      };
+      console.log(JSON.stringify(dictionary));
+      sendMessage(dictionary);
+    }
+  }
 });

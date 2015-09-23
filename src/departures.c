@@ -3,6 +3,7 @@
 #include "communication.h"
   
 static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
+static int DEPARTURES_WINDOW_HEADER_HEIGHT = 22;
 static int ICON_SIZE = 30;
 static int PADDING = 2;
   
@@ -19,12 +20,25 @@ static GBitmap *s_icon_cable_bitmap;
 static int deps_count = -1; // how many items were loaded ATM
 static int deps_max_count = -1; // how many items we are expecting (i.e. buffer size)
 static DEP_Item *deps_items = NULL; // buffer for items
+static char stationName[32]; //name of station
   
+static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
+  return 1;
+}
+
+static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_t section_index, void *callback_context) {
+  menu_cell_basic_header_draw(ctx, cell_layer, stationName);
+}
+
+static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
+  return DEPARTURES_WINDOW_HEADER_HEIGHT;
+}
+
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *context) {
   if(deps_count < 0) // not initialized
     return 0; // statusbar must already contain "Connecting..." message
-  else if(deps_count == 0) // no data
-    return 1;
+  /*else if(deps_count == 0) // no data*/
+    /*return 1;*/
   else
     return deps_count;
 }
@@ -33,8 +47,8 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   GRect bounds = layer_get_bounds(cell_layer);
   // draw direction
   GRect frame = GRect(
-    ICON_SIZE + 2*PADDING, 
-    -3, 
+    ICON_SIZE + 2*PADDING,
+    -3,
     bounds.size.w - 2*ICON_SIZE,
     bounds.size.h/2
   );
@@ -80,15 +94,15 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     frame.size.w = 20;
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
     if (strcmp((char*)deps_items[idx->row].icon, "bus") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_bus_bitmap, frame); 
+        graphics_draw_bitmap_in_rect(ctx, s_icon_bus_bitmap, frame);
     } else if (strcmp(deps_items[idx->row].icon, "tram") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_tram_bitmap, frame); 
+        graphics_draw_bitmap_in_rect(ctx, s_icon_tram_bitmap, frame);
     } else if (strcmp(deps_items[idx->row].icon, "train") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_train_bitmap, frame); 
+        graphics_draw_bitmap_in_rect(ctx, s_icon_train_bitmap, frame);
     } else if (strcmp(deps_items[idx->row].icon, "boat") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_boat_bitmap, frame); 
+        graphics_draw_bitmap_in_rect(ctx, s_icon_boat_bitmap, frame);
     } else if (strcmp(deps_items[idx->row].icon, "cable") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_cable_bitmap, frame); 
+        graphics_draw_bitmap_in_rect(ctx, s_icon_cable_bitmap, frame);
     } else {
         snprintf(s_buff, sizeof(s_buff), "0'");
     }
@@ -101,7 +115,7 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   GColor color_bg = GColorFromHEX(deps_items[idx->row].color_bg);
   GColor color_fg = GColorFromHEX(deps_items[idx->row].color_fg);
   graphics_context_set_fill_color(ctx, color_bg);
-  graphics_fill_rect(ctx, frame, 3, GCornersAll); 
+  graphics_fill_rect(ctx, frame, 3, GCornersAll);
   if(gcolor_equal(color_bg, GColorWhite))
     graphics_draw_round_rect(ctx, frame, 3);
   graphics_context_set_text_color(ctx, color_fg);
@@ -155,9 +169,12 @@ static void main_window_load(Window *window) {
   // Create MenuLayer
   s_menu_layer = menu_layer_create(GRect(0,STATUS_BAR_LAYER_HEIGHT,bounds.size.w,bounds.size.h));
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
+    .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
     .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
-    .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
     .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
+    .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
+    .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
+    .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
     .select_click = (MenuLayerSelectCallback)select_callback,
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
@@ -167,6 +184,7 @@ static void main_window_load(Window *window) {
 }
 
 static void main_window_unload(Window *window) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "unload departures window");
   // Destroy Bitmaps
   gbitmap_destroy(s_icon_bus_bitmap);
   gbitmap_destroy(s_icon_tram_bitmap);
@@ -176,12 +194,17 @@ static void main_window_unload(Window *window) {
   // Destroy TextLayer
   status_bar_layer_destroy(s_status_bar);
   menu_layer_destroy(s_menu_layer);
+  // Reset number of departures
+  deps_count = -1;
 }
 
 static void deps_free_items() {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Free %d items", deps_count);
   for(int i=0; i<deps_count; i++) {
     free(deps_items[i].name);
+    free(deps_items[i].icon);
     free(deps_items[i].time);
+    free(deps_items[i].direction);
   }
   free(deps_items);
   deps_items = NULL;
@@ -203,8 +226,10 @@ void deps_deinit() {
   deps_free_items();
 }
 
-void deps_show(int station_id) {
+void deps_show(int station_id, char* station_name) {
+  strcpy(stationName,station_name);
   window_stack_push(departures, true);
+  menu_layer_reload_data(s_menu_layer);
   comm_get_deps(station_id, 0);
 }
 
@@ -218,31 +243,34 @@ void deps_set_count(int count) {
 }
 
 void deps_set_item(int i, DEP_Item data) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "New item %d", i);
-//   assert(deps_max_count > 0, "Trying to set item while not initialized!");
-//   assert(deps_max_count > i, "Unexpected item index: %d, max count is %d", i, deps_max_count);
-  
-  deps_items[i].id = data.id;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "id %d", data.id);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
-  deps_items[i].name = malloc(strlen(data.name)+5);
-  strcpy(deps_items[i].name, data.name);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "icon %s of size %d", data.icon, strlen(data.icon));
-  deps_items[i].icon = malloc(strlen(data.icon)+5);
-  strcpy(deps_items[i].icon, data.icon);
-  deps_items[i].color_fg = data.color_fg;
-  deps_items[i].color_bg = data.color_bg;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "direction %s of size %d", data.direction, strlen(data.direction));
-  deps_items[i].direction = malloc(strlen(data.direction)+1);
-  strcpy(deps_items[i].direction, data.direction);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "time %s", data.time);
-  deps_items[i].time = malloc(strlen(data.time)+1);
-  strcpy(deps_items[i].time, data.time);
-  deps_items[i].delay = data.delay;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "delay %d", data.delay);
-  deps_items[i].countdown = data.countdown;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "countdown %d", data.countdown);
-  deps_count++;
-  menu_layer_reload_data(s_menu_layer);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", deps_count);
+  //ignore incomming items from previous requests
+  if(deps_count >= 0) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "New item %d", i);
+    //   assert(deps_max_count > 0, "Trying to set item while not initialized!");
+    //   assert(deps_max_count > i, "Unexpected item index: %d, max count is %d", i, deps_max_count);
+
+    deps_items[i].id = data.id;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "id %d", data.id);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
+    deps_items[i].name = malloc(strlen(data.name)+5);
+    strcpy(deps_items[i].name, data.name);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "icon %s of size %d", data.icon, strlen(data.icon));
+    deps_items[i].icon = malloc(strlen(data.icon)+5);
+    strcpy(deps_items[i].icon, data.icon);
+    deps_items[i].color_fg = data.color_fg;
+    deps_items[i].color_bg = data.color_bg;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "direction %s of size %d", data.direction, strlen(data.direction));
+    deps_items[i].direction = malloc(strlen(data.direction)+1);
+    strcpy(deps_items[i].direction, data.direction);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "time %s", data.time);
+    deps_items[i].time = malloc(strlen(data.time)+1);
+    strcpy(deps_items[i].time, data.time);
+    deps_items[i].delay = data.delay;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "delay %d", data.delay);
+    deps_items[i].countdown = data.countdown;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "countdown %d", data.countdown);
+    deps_count++;
+    menu_layer_reload_data(s_menu_layer);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", deps_count);
+  }
 }

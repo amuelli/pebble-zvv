@@ -7,7 +7,7 @@
 // Write message to buffer & send
 void send_message(void){
   DictionaryIterator *iter;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Send message");
+  /*APP_LOG(APP_LOG_LEVEL_DEBUG, "Send message");*/
 
   app_message_outbox_begin(&iter);
   dict_write_uint8(iter, KEY_CODE, 0x1);
@@ -30,16 +30,15 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
   if(code == CODE_ARRAY_START) {
     int count = (int)dict_find(iter, KEY_COUNT)->value->int32;
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Items count: %d", count);
-//       comm_array_size = count;
     if(scope == SCOPE_STA) {
       sta_set_count(count);
+    } else if(scope == SCOPE_FAV) {
+      sta_fav_set_count(count);
     } else if(scope == SCOPE_DEPS) {
       deps_set_count(count);
     } else {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "Err!");
     }
-//       snprintf(sb_printf_alloc(32), 32, "Loading...");
-//       sb_printf_update(); 
   } else if(code == CODE_ARRAY_ITEM) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Receiving item"); 
     int i = (int)dict_find(iter, KEY_ITEM)->value->uint32;
@@ -50,6 +49,12 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
         .id = dict_find(iter, KEY_ID)->value->uint32,
         .name = dict_find(iter, KEY_NAME)->value->cstring,
         .distance = dict_find(iter, KEY_DISTANCE)->value->uint32,
+      });
+    } else if(scope == SCOPE_FAV) {
+      sta_fav_set_item(i, (STA_Item){
+        .id = dict_find(iter, KEY_ID)->value->uint32,
+        .name = dict_find(iter, KEY_NAME)->value->cstring,
+        .distance = 0,
       });
     } else if(scope == SCOPE_DEPS) {
       deps_set_item(i, (DEP_Item){
@@ -76,15 +81,6 @@ static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reas
 }
 
 void comm_get_deps(int stationId, int firstItemId) {
-//  if(!comm_js_ready) {
-//  comm_js_ready_cb = comm_query_tasks_cb;
-//  comm_js_ready_cb_data = (void*)listId;
-//  comm_is_available(); // show message if needed
-//  return;
-// }
-// if(!comm_is_available())
-// return;
-// sb_show("Connecting...");
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Querying departures for stationId=%d", stationId);
   DictionaryIterator *iter;
   Tuplet code = TupletInteger(KEY_CODE, CODE_GET);
