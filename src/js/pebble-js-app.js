@@ -289,11 +289,11 @@ Pebble.addEventListener("appmessage", function(e) {
 
 Pebble.addEventListener('showConfiguration', function(e) {
   // Show config page
-  Pebble.openURL('http://pebble-zvv-config.muel.li/');
+  Pebble.openURL('http://188.166.34.8:5000');
 });
 
 Pebble.addEventListener('webviewclosed', function(e) {
-  var config_data = JSON.parse(e.data);
+  var config_data = JSON.parse(decodeURIComponent(e.response));
   console.log('Config window returned: ' + JSON.stringify(config_data));
   console.log('Config window returned: ' + JSON.stringify(config_data.stations));
   var stations = config_data.stations;

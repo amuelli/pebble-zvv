@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "author": "Alexander Mülli",
+  "private": true,
+  "dependencies": {},
+  "keywords": [
+    "pebble-app"
+  ],
+  "pebble": {
+    "sdkVersion": "3",
+    "resources": {
+      "media": [
+        {
+          "type": "png",
+          "name": "ICON_BOAT",
+          "file": "images/boat.png"
+        },
+        {
+          "menuIcon": true,
+          "type": "png",
+          "name": "ICON_TRAM",
+          "file": "images/tram.png"
+        },
+        {
+          "type": "png",
+          "name": "ICON_TRAIN",
+          "file": "images/train.png"
+        },
+        {
+          "type": "png",
+          "name": "ICON_CABLE",
+          "file": "images/cablecar.png"
+        },
+        {
+          "type": "png",
+          "name": "ICON_BUS",
+          "file": "images/bus.png"
+        }
+      ]
+    },
+    "projectType": "native",
+    "uuid": "408685ad-905d-441c-9a7a-3652695142f0",
+    "messageKeys": {
+      "count": 2,
+      "countdown": 14,
+      "direction": 11,
+      "code": 0,
+      "color_fg": 9,
+      "distance": 15,
+      "name": 7,
+      "delay": 13,
+      "color_bg": 10,
+      "item": 5,
+      "time": 12,
+      "scope": 1,
+      "id": 6,
+      "icon": 8
+    },
+    "enableMultiJS": false,
+    "displayName": "ZVV",
+    "watchapp": {
+      "onlyShownOnCommunication": false,
+      "hiddenApp": false,
+      "watchface": false
+    },
+    "targetPlatforms": [
+      "basalt"
+    ],
+    "capabilities": [
+      "location",
+      "configurable"
+    ]
+  },
+  "name": "ZVV"
+}
