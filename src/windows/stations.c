@@ -1,7 +1,7 @@
 #include <pebble.h>
-#include "stations.h"
-#include "communication.h"
-#include "departures.h"
+#include "windows/stations.h"
+#include "modules/communication.h"
+#include "windows/departures.h"
 
 static int STATIONS_WINDOW_CELL_HEIGHT = 36;
 static int PADDING = 2;

@@ -1,6 +1,6 @@
 #include <pebble.h>
-#include "departures.h"
-#include "communication.h"
+#include "windows/departures.h"
+#include "modules/communication.h"
   
 static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
 static int DEPARTURES_WINDOW_HEADER_HEIGHT = 22;

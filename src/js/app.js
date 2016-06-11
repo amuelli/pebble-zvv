@@ -1,3 +1,4 @@
+var keys = require('message_keys');
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
@@ -76,13 +77,13 @@ function getStations(x, y) {
     function(responseText) {
       var json = JSON.parse(responseText);
       var stations = json.stations;
+      var dict = {};
       
       //TODO: better handling of unsuccessful requests
-      sendMessage({
-        "code": 20, // array start/size
-        "scope" : 0,
-        "count": stations.length
-      });
+      dict[keys.code] = 20; // array start/size
+      dict[keys.scope] = 0;
+      dict[keys.count] = stations.length;
+      sendMessage(dict);
       for( var i = 0; i < stations.length; i++) {
         var station = stations[i];
         
@@ -92,16 +93,15 @@ function getStations(x, y) {
         station.name = station.name.replace(/^Zürich, /, '');
         station.name = station.name.replace(/Bahnhof/, 'Bhf');
         
-        var dictionary = {
-          "code" : 21,
-          "scope" : 0,
-          "item" : i,
-          "id" : parseInt(station.id,10),
-          "name" : station.name,
-          "distance" : station.distance
-        };
-        console.log(JSON.stringify(dictionary));
-        sendMessage(dictionary);
+        dict = {};
+        dict[keys.code] = 21;
+        dict[keys.scope] = 0;
+        dict[keys.item] = i;
+        dict[keys.id] = parseInt(station.id,10);
+        dict[keys.name] = station.name;
+        dict[keys.distance] = station.distance;
+        console.log(JSON.stringify(dict));
+        sendMessage(dict);
       }
     }
   );
@@ -166,11 +166,12 @@ function getDeparturesZVV(stationId) {
       var departures = json.connections;
       //TODO: save in local storage for later retreival
       
-      sendMessage({
-        "code": 20, // array start/size
-        "scope" : 2,
-        "count": departures.length
-      });
+
+      var dict = {};
+      dict[keys.code] = 20; // array start/size
+      dict[keys.scope] = 2;
+      dict[keys.count] = departures.length;
+      sendMessage(dict);
       
       for( var i = 0; i < departures.length; i++) {
         var dep = departures[i];
@@ -193,11 +194,11 @@ function getDeparturesZVV(stationId) {
         direction = direction.replace(/^Zürich, /, '');
         direction = direction.replace(/^Bahnhof/, 'Bhf');
         
-        var color_fg = '000000'; 
-        var color_bg = 'ffffff'; 
+        var colorFg = '000000';
+        var colorBg = 'ffffff';
         if(dep.product.color) {
-          color_fg = dep.product.color.fg;
-          color_bg = dep.product.color.bg;
+          colorFg = dep.product.color.fg;
+          colorBg = dep.product.color.bg;
         }
         
         var realTime = dep.mainLocation.realTime;
@@ -215,31 +216,31 @@ function getDeparturesZVV(stationId) {
           dep_time = dep_time + ' +' + delay + "'";
         }
         
-        var dictionary = {
-          "code" : 21,
-          "scope" : 2,
-          "item" : i,
-          "id" : i,
-          "name" : name,
-          "icon" : icon,
-          "direction" : direction,
-          "color_fg" : parseInt(color_fg, 16), //convert in hex value
-          "color_bg" : parseInt(color_bg, 16), //convert in hex value
-          "delay" : delay,
-          "countdown" : parseInt(countdown),
-          "time" : dep_time
-        };
+        dict = {};
+        dict[keys.code] = 21;
+        dict[keys.scope] = 2;
+        dict[keys.item] = i;
+        dict[keys.id] = i;
+        dict[keys.name] = name;
+        dict[keys.icon] = icon;
+        dict[keys.direction] = direction;
+        dict[keys.colorFg] = parseInt(colorFg, 16); //convert in hex value;
+        dict[keys.colorBg] = parseInt(colorBg, 16); //convert in hex value;
+        dict[keys.delay] = delay;
+        dict[keys.countdown] = parseInt(countdown);
+        dict[keys.time] = dep_time;
+
 // //         console.log(JSON.stringify(dep));
-        console.log(JSON.stringify(dictionary));
+        console.log(JSON.stringify(dict));
         // Send to Pebble
-        sendMessage(dictionary);
+        sendMessage(dict);
       }      
       
-      sendMessage({
-        "code": 22, // array end
-        "scope" : 2,
-        "count": departures.length
-      });
+      dict = {};
+      dict[keys.code] = 22;
+      dict[keys.scope] = 2;
+      dict[keys.count] = departures.length;
+      sendMessage(dict);
     }
   ); 
 }
@@ -299,11 +300,11 @@ Pebble.addEventListener('webviewclosed', function(e) {
   var stations = config_data.stations;
   console.log(stations.length);
   if(stations.length > 0) {
-    sendMessage({
-      "code": 20, // array start/size
-      "scope" : 1,
-      "count": stations.length
-    });
+    var dict = {};
+    dict[keys.code] = 20;
+    dict[keys.scope] = 1;
+    dict[keys.count] = stations.length;
+    sendMessage(dict);
     for( var i = 0; i < stations.length; i++) {
       var station = stations[i];
 
@@ -313,15 +314,14 @@ Pebble.addEventListener('webviewclosed', function(e) {
       station.name = station.name.replace(/^Zürich, /, '');
       station.name = station.name.replace(/Bahnhof/, 'Bhf');
 
-      var dictionary = {
-        "code" : 21,
-        "scope" : 1,
-        "item" : i,
-        "id" : parseInt(station.id,10),
-        "name" : station.name
-      };
-      console.log(JSON.stringify(dictionary));
-      sendMessage(dictionary);
+      dict = {};
+      dict[keys.code] = 21;
+      dict[keys.scope] = 1;
+      dict[keys.item] = i;
+      dict[keys.id] = parseInt(station.id,10);
+      dict[keys.name] = station.name;
+      console.log(JSON.stringify(dict));
+      sendMessage(dict);
     }
   }
 });

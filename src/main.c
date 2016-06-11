@@ -1,7 +1,7 @@
 #include <pebble.h>
-#include <communication.h>
-#include <stations.h>
-#include <departures.h>
+#include <modules/communication.h>
+#include <windows/stations.h>
+#include <windows/departures.h>
 
 void init(void) {
   comm_init();
