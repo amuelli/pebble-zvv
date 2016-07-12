@@ -54,8 +54,8 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     bounds.size.h/2
   );
   // expand frame width if countdown on the right is small
-  if(deps_items[idx->row].countdown < 10) {
-      frame.size.w += 10;
+  if(deps_items[idx->row].countdown > 0 && deps_items[idx->row].countdown < 10) {
+    frame.size.w += 10;
   }
   graphics_draw_text(ctx,
     deps_items[idx->row].direction,
@@ -145,12 +145,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   }
             
   graphics_draw_text(ctx,
-     name,
-     font,
-     frame,
-     GTextOverflowModeFill,
-     GTextAlignmentCenter,
-     NULL
+    name,
+    font,
+    frame,
+    GTextOverflowModeFill,
+    GTextAlignmentCenter,
+    NULL
   );
 }
 
