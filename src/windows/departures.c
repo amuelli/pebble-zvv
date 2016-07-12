@@ -1,5 +1,6 @@
 #include <pebble.h>
 #include "windows/departures.h"
+#include "windows/departure.h"
 #include "modules/communication.h"
   
 static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
@@ -159,6 +160,7 @@ static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex 
 
 static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *context) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row);
+  dep_show(deps_items[idx->row]);
 }
 
 static void main_window_load(Window *window) {
