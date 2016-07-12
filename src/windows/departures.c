@@ -47,21 +47,25 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   GRect bounds = layer_get_bounds(cell_layer);
   // draw direction
   GRect frame = GRect(
-    ICON_SIZE + 2*PADDING,
-    -3,
-    bounds.size.w - 2*ICON_SIZE,
+    ICON_SIZE + 3*PADDING,
+    0,
+    bounds.size.w - 2*ICON_SIZE - PADDING,
     bounds.size.h/2
   );
+  // expand frame width if countdown on the right is small
+  if(deps_items[idx->row].countdown < 10) {
+      frame.size.w += 10;
+  }
   graphics_draw_text(ctx,
     deps_items[idx->row].direction,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18),
+    fonts_get_system_font(FONT_KEY_GOTHIC_14),
     frame,
     GTextOverflowModeTrailingEllipsis,
     GTextAlignmentLeft,
     NULL
   );
   // draw time of scheduled departure plus delay
-  frame.origin.y += 16;
+  frame.origin.y += 12;
   graphics_draw_text(ctx,
     deps_items[idx->row].time,
     fonts_get_system_font(FONT_KEY_GOTHIC_18),
@@ -76,9 +80,8 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   frame.size.h = ICON_SIZE;
   frame.size.w = ICON_SIZE;
   static char s_buff[16];
-  int countdown = deps_items[idx->row].countdown;
-  if(countdown > 0) {
-    snprintf(s_buff, sizeof(s_buff), "%d'", countdown);
+  if(deps_items[idx->row].countdown > 0) {
+    snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
     graphics_draw_text(ctx,
       s_buff,
       fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
@@ -112,7 +115,14 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   frame.origin.y = (bounds.size.h / 2) - (ICON_SIZE / 2);
   frame.size.h = ICON_SIZE;
   frame.size.w = ICON_SIZE;
-  GColor color_bg = GColorFromHEX(deps_items[idx->row].color_bg);
+
+  GColor color_bg;
+  // correct some coloring
+  switch(deps_items[idx->row].color_bg) {
+    case 9090335 : color_bg = GColorSpringBud; break;
+    case 12703135 : color_bg = GColorInchworm; break;
+    default : color_bg = GColorFromHEX(deps_items[idx->row].color_bg);
+  }
   GColor color_fg = GColorFromHEX(deps_items[idx->row].color_fg);
   graphics_context_set_fill_color(ctx, color_bg);
   graphics_fill_rect(ctx, frame, 3, GCornersAll);
@@ -122,8 +132,9 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   char * name = deps_items[idx->row].name;
   GFont font;
   if(strlen(name) <= 2) {
-    frame.origin.y -= 2;
-    font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+    frame.origin.y -= 4;
+    font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
+    if(strlen(name) == 1) { frame.origin.x += 1; }
   } else if(strlen(name) == 3){
     frame.origin.y += 3;
     font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
