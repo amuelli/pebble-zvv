@@ -12,11 +12,7 @@ static Window *departures;
 static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
 
-static GBitmap *s_icon_bus_bitmap;
-static GBitmap *s_icon_tram_bitmap;
-static GBitmap *s_icon_train_bitmap;
-static GBitmap *s_icon_boat_bitmap;
-static GBitmap *s_icon_cable_bitmap;
+static GFont s_icons;
 
 static int deps_count = -1; // how many items were loaded ATM
 static int deps_max_count = -1; // how many items we are expecting (i.e. buffer size)
@@ -117,24 +113,32 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       NULL
     );
   } else {
-    frame.origin.x = bounds.origin.x + bounds.size.w - 20 - PADDING;
-    frame.origin.y = 5;
-    frame.size.w = 20;
-    frame.size.h = 20;
-    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+    frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE;
+    frame.origin.y = 0;
+    frame.size.w = ICON_SIZE+2;
+    frame.size.h = ICON_SIZE;
+    char* icon_number;
     if (strcmp((char*)deps_items[idx->row].icon, "bus") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_bus_bitmap, frame);
+      icon_number = "1";
     } else if (strcmp(deps_items[idx->row].icon, "tram") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_tram_bitmap, frame);
+      icon_number = "2";
     } else if (strcmp(deps_items[idx->row].icon, "train") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_train_bitmap, frame);
+      icon_number = "3";
     } else if (strcmp(deps_items[idx->row].icon, "boat") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_boat_bitmap, frame);
+      icon_number = "4";
     } else if (strcmp(deps_items[idx->row].icon, "cable") == 0) {
-        graphics_draw_bitmap_in_rect(ctx, s_icon_cable_bitmap, frame);
+      icon_number = "5";
     } else {
-        snprintf(s_buff, sizeof(s_buff), "0'");
+      icon_number = "";
     }
+    graphics_draw_text(ctx,
+      icon_number,
+      s_icons,
+      frame,
+      GTextOverflowModeWordWrap,
+      GTextAlignmentCenter,
+      NULL
+    );
   }
 
   // draw line icon with colors
@@ -190,12 +194,8 @@ static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *
 }
 
 static void main_window_load(Window *window) {
-  // load bitmaps
-  s_icon_bus_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_BUS);
-  s_icon_tram_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_TRAM);
-  s_icon_train_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_TRAIN);
-  s_icon_boat_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_BOAT);
-  s_icon_cable_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_CABLE);
+  // Load the custom font
+  s_icons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_ICONS_32));
   
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
@@ -228,12 +228,8 @@ static void main_window_load(Window *window) {
 
 static void main_window_unload(Window *window) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "unload departures window");
-  // Destroy Bitmaps
-  gbitmap_destroy(s_icon_bus_bitmap);
-  gbitmap_destroy(s_icon_tram_bitmap);
-  gbitmap_destroy(s_icon_train_bitmap);
-  gbitmap_destroy(s_icon_boat_bitmap);
-  gbitmap_destroy(s_icon_cable_bitmap);
+  // Destroy Custom Font
+  fonts_unload_custom_font(s_icons);
   // Destroy TextLayer
   status_bar_layer_destroy(s_status_bar);
   menu_layer_destroy(s_menu_layer);

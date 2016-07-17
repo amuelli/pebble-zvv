@@ -11,30 +11,16 @@
     "resources": {
       "media": [
         {
-          "type": "png",
-          "name": "ICON_BOAT",
-          "file": "images/boat.png"
+          "characterRegex": "[1-6]",
+          "type": "font",
+          "name": "ICONS_32",
+          "file": "fonts/icons.ttf"
         },
         {
-          "menuIcon": true,
-          "type": "png",
-          "name": "ICON_TRAM",
-          "file": "images/tram.png"
-        },
-        {
-          "type": "png",
-          "name": "ICON_TRAIN",
-          "file": "images/train.png"
-        },
-        {
-          "type": "png",
-          "name": "ICON_CABLE",
-          "file": "images/cablecar.png"
-        },
-        {
-          "type": "png",
-          "name": "ICON_BUS",
-          "file": "images/bus.png"
+          "characterRegex": "[1-6]",
+          "type": "font",
+          "name": "ICONS_72",
+          "file": "fonts/icons.ttf"
         }
       ]
     },
