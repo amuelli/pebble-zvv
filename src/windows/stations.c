@@ -4,7 +4,13 @@
 #include "windows/departures.h"
 
 static int STATIONS_WINDOW_CELL_HEIGHT = 36;
+static int STATIONS_WINDOW_HEADER_HEIGHT = 22;
+#if defined(PBL_RECT)
 static int PADDING = 2;
+#elif defined(PBL_ROUND)
+static int PADDING = 0;
+#endif
+char * sectionTitles[]={"Favourite Stations","Nearby Stations"};
   
 static Window *stations;
 static MenuLayer *s_menu_layer;
@@ -22,25 +28,29 @@ static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
 }
 
 static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_t section_index, void *callback_context) {
-  switch (section_index) {
-    case 0:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Favourite Stations");
-      break;
-    case 1:
-      menu_cell_basic_header_draw(ctx, cell_layer, "Nearby Stations");
-      break;
-  }
+  GRect bounds = layer_get_bounds(cell_layer);
+  graphics_context_set_fill_color(ctx, GColorLightGray);
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_stroke_color(ctx, GColorLightGray);
+  graphics_draw_line(ctx, GPoint(0, bounds.origin.y), GPoint(bounds.size.w, bounds.origin.y));
+  int lowerY = bounds.origin.y + bounds.size.h - 1;
+  graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
+  graphics_draw_text(ctx, sectionTitles[section_index],
+    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+    GRect(0, -2, bounds.size.w, 18), GTextOverflowModeTrailingEllipsis,
+    GTextAlignmentCenter, NULL
+  );
 }
 
 static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
   switch (section_index) {
     case 0:
       if (nrFavorites==0) return 0;
-      else return 22;
+      else return STATIONS_WINDOW_HEADER_HEIGHT;
       break;
     case 1:
     default:
-      return 22;
+      return STATIONS_WINDOW_HEADER_HEIGHT;
       break;
   }
 }
@@ -67,48 +77,40 @@ static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_in
 static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, void *context) {
   GRect bounds = layer_get_bounds(cell_layer);
   GRect frame = GRect(
-      PADDING,
-      -PADDING,
-      bounds.size.w,
-      bounds.size.h/2 - 2*PADDING
-      );
+    PADDING,
+    -2,
+    bounds.size.w,
+    bounds.size.h/2 - 2*PADDING
+  );
   switch(idx->section) {
     case 0:
       menu_cell_basic_draw(ctx, cell_layer, sta_fav_items[idx->row].name, NULL, NULL);
-      /*graphics_draw_text(ctx,*/
-          /*sta_fav_items[idx->row].name,*/
-          /*fonts_get_system_font(FONT_KEY_GOTHIC_18),*/
-          /*frame,*/
-          /*GTextOverflowModeTrailingEllipsis,*/
-          /*GTextAlignmentLeft,*/
-          /*NULL*/
-          /*);*/
       break;
     case 1:
       graphics_draw_text(ctx,
-          sta_items[idx->row].name,
-          fonts_get_system_font(FONT_KEY_GOTHIC_18),
-          frame,
-          GTextOverflowModeTrailingEllipsis,
-          GTextAlignmentLeft,
-          NULL
-          );
+        sta_items[idx->row].name,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18),
+        frame,
+        GTextOverflowModeTrailingEllipsis,
+        PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+        NULL
+      );
       static char distance[10];
       snprintf(distance, sizeof(distance), "%dm", sta_items[idx->row].distance);
-      frame.origin.y = bounds.size.h/2 - 2*PADDING;
+      frame.origin.y = bounds.size.h/2 - 4;
       graphics_draw_text(ctx,
-          distance,
-          fonts_get_system_font(FONT_KEY_GOTHIC_18),
-          frame,
-          GTextOverflowModeTrailingEllipsis,
-          GTextAlignmentLeft,
-          NULL
-          );
+        distance,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18),
+        frame,
+        GTextOverflowModeTrailingEllipsis,
+        PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+        NULL
+      );
       break;
   }
 }
 
-static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *callback_context) {
+static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context) {
   return STATIONS_WINDOW_CELL_HEIGHT;
 }
 
@@ -129,12 +131,15 @@ static void main_window_load(Window *window) {
 
   // Status Bar
   s_status_bar = status_bar_layer_create();
-  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeDotted);
-  status_bar_layer_set_colors(s_status_bar, GColorClear, GColorWhite);
-  layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
+  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeNone);
+  status_bar_layer_set_colors(s_status_bar, GColorBlack, GColorWhite);
   
   // Create MenuLayer
+#if defined(PBL_RECT)
   s_menu_layer = menu_layer_create(GRect(0,STATUS_BAR_LAYER_HEIGHT,bounds.size.w,bounds.size.h));
+#elif defined(PBL_ROUND)
+  s_menu_layer = menu_layer_create(bounds);
+#endif
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
     .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
     .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
@@ -145,8 +150,12 @@ static void main_window_load(Window *window) {
     .select_click = (MenuLayerSelectCallback)select_callback,
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
-  menu_layer_set_highlight_colors(s_menu_layer, GColorCeleste, GColorBlack);
+  menu_layer_set_highlight_colors(s_menu_layer, GColorCobaltBlue, GColorWhite);
+  menu_layer_set_normal_colors(s_menu_layer, GColorWhite, GColorBlack);
+
+  // add layers with status bar layer on top
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
+  layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
 }
 
 static void main_window_unload(Window *window) {

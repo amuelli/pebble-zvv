@@ -56,7 +56,7 @@ static void main_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   s_status_bar = status_bar_layer_create();
-  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeDotted);
+  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeNone);
   status_bar_layer_set_colors(s_status_bar, GColorBlack, GColorWhite);
   layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
 

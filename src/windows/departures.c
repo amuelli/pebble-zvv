@@ -7,7 +7,7 @@ static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
 static int DEPARTURES_WINDOW_HEADER_HEIGHT = 22;
 static int ICON_SIZE = 30;
 static int PADDING = 2;
-  
+
 static Window *departures;
 static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
@@ -28,7 +28,19 @@ static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
 }
 
 static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_t section_index, void *callback_context) {
-  menu_cell_basic_header_draw(ctx, cell_layer, stationName);
+  GRect bounds = layer_get_bounds(cell_layer);
+  graphics_context_set_fill_color(ctx, GColorLightGray);
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_stroke_color(ctx, GColorLightGray);
+  int lowerY = bounds.origin.y + bounds.size.h - 1;
+  graphics_draw_line(ctx, GPoint(0, bounds.origin.y), GPoint(bounds.size.w, bounds.origin.y));
+  graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
+  graphics_draw_text(ctx,
+    stationName,
+    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+    GRect(0, -2, bounds.size.w, 18), GTextOverflowModeTrailingEllipsis,
+    GTextAlignmentCenter, NULL
+  );
 }
 
 static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
@@ -46,13 +58,26 @@ static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_in
 
 static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, void *context) {
   GRect bounds = layer_get_bounds(cell_layer);
-  // draw direction
+
+#if defined(PBL_ROUND)
+  // get info of pixel row in the middle of menu row
+  GBitmap *fb = graphics_capture_frame_buffer(ctx);
+  GPoint sc_coord = layer_convert_point_to_screen(cell_layer, GPoint(0, bounds.size.h/2));
+  GBitmapDataRowInfo info = gbitmap_get_data_row_info(fb, sc_coord.y);
+  graphics_release_frame_buffer(ctx, fb);
+  // adapt bounds for round displays
+  bounds.origin.x = info.min_x + PADDING;
+  bounds.size.w = info.max_x - info.min_x - PADDING;
+#endif
+
   GRect frame = GRect(
-    ICON_SIZE + 3*PADDING,
+    bounds.origin.x + ICON_SIZE + 3*PADDING,
     0,
     bounds.size.w - 2*ICON_SIZE - PADDING,
     bounds.size.h/2
   );
+
+  // draw direction
   // expand frame width if countdown on the right is small
   if(deps_items[idx->row].countdown > 0 && deps_items[idx->row].countdown < 10) {
     frame.size.w += 10;
@@ -76,10 +101,10 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     NULL
   );
   // draw time until real time departure
-  frame.origin.x = bounds.size.w - ICON_SIZE - PADDING;  
+  frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE - PADDING;
   frame.origin.y = 0;
-  frame.size.h = ICON_SIZE;
   frame.size.w = ICON_SIZE;
+  frame.size.h = ICON_SIZE;
   static char s_buff[16];
   if(deps_items[idx->row].countdown > 0) {
     snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
@@ -92,10 +117,10 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       NULL
     );
   } else {
-    frame.origin.x = bounds.size.w - 20 - PADDING;  
+    frame.origin.x = bounds.origin.x + bounds.size.w - 20 - PADDING;
     frame.origin.y = 5;
-    frame.size.h = 20;
     frame.size.w = 20;
+    frame.size.h = 20;
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
     if (strcmp((char*)deps_items[idx->row].icon, "bus") == 0) {
         graphics_draw_bitmap_in_rect(ctx, s_icon_bus_bitmap, frame);
@@ -111,11 +136,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
         snprintf(s_buff, sizeof(s_buff), "0'");
     }
   }
+
   // draw line icon with colors
-  frame.origin.x = PADDING;
+  frame.origin.x = bounds.origin.x + PADDING;
   frame.origin.y = (bounds.size.h / 2) - (ICON_SIZE / 2);
-  frame.size.h = ICON_SIZE;
   frame.size.w = ICON_SIZE;
+  frame.size.h = ICON_SIZE;
 
   GColor color_bg;
   // correct some coloring
@@ -154,7 +180,7 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   );
 }
 
-static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *callback_context) {
+static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context) {
   return DEPARTURES_WINDOW_CELL_HEIGHT;
 }
 
@@ -175,12 +201,15 @@ static void main_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   s_status_bar = status_bar_layer_create();
-  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeDotted);
+  status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeNone);
   status_bar_layer_set_colors(s_status_bar, GColorBlack, GColorWhite);
-  layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
 
   // Create MenuLayer
-  s_menu_layer = menu_layer_create(GRect(0,STATUS_BAR_LAYER_HEIGHT,bounds.size.w,bounds.size.h));
+#if defined(PBL_RECT)
+  s_menu_layer = menu_layer_create(GRect(0, STATUS_BAR_LAYER_HEIGHT, bounds.size.w, bounds.size.h));
+#elif defined(PBL_ROUND)
+  s_menu_layer = menu_layer_create(bounds);
+#endif
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
     .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
     .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
@@ -191,9 +220,10 @@ static void main_window_load(Window *window) {
     .select_click = (MenuLayerSelectCallback)select_callback,
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
-  menu_layer_set_highlight_colors(s_menu_layer, GColorCeleste, GColorBlack);
-//   menu_layer_set_normal_colors(s_menu_layer, GColorBlack, GColorWhite);
+  menu_layer_set_highlight_colors(s_menu_layer, GColorCobaltBlue, GColorWhite);
+  menu_layer_set_normal_colors(s_menu_layer, GColorWhite, GColorBlack);
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
+  layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
 }
 
 static void main_window_unload(Window *window) {
@@ -213,7 +243,7 @@ static void main_window_unload(Window *window) {
 
 static void deps_free_items() {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Free %d items", deps_count);
-  for(int i=0; i<deps_count; i++) {
+  for(int i = 0; i < deps_count; i++) {
     free(deps_items[i].name);
     free(deps_items[i].icon);
     free(deps_items[i].time);
