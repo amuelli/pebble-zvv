@@ -40,13 +40,13 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   }
 
   graphics_draw_text(ctx,
-     name,
-     font,
-     text_bounds,
-     GTextOverflowModeFill,
-     PBL_IF_ROUND_ELSE(GTextAlignmentCenter,GTextAlignmentRight),
-     NULL
-  );
+      name,
+      font,
+      text_bounds,
+      GTextOverflowModeFill,
+      PBL_IF_ROUND_ELSE(GTextAlignmentCenter,GTextAlignmentRight),
+      NULL);
+
   char * direction = dep_item.direction;
   text_bounds.origin.x += PBL_IF_ROUND_ELSE(0, 44);
   text_bounds.origin.y += PBL_IF_ROUND_ELSE(28, 14);
@@ -54,56 +54,53 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   text_bounds.size.h -= PBL_IF_ROUND_ELSE(28, 14);
 
   graphics_draw_text(ctx,
-     direction,
-     fonts_get_system_font(FONT_KEY_GOTHIC_14),
-     text_bounds,
-     GTextOverflowModeFill,
-     PBL_IF_ROUND_ELSE(GTextAlignmentCenter,GTextAlignmentLeft),
-     NULL
-  );
-  GRect icon_bounds = GRect(0, 38, bounds.size.w, bounds.size.h - 38);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, dep_item.icon);
+      direction,
+      fonts_get_system_font(FONT_KEY_GOTHIC_14),
+      text_bounds,
+      GTextOverflowModeFill,
+      PBL_IF_ROUND_ELSE(GTextAlignmentCenter,GTextAlignmentLeft),
+      NULL);
+
   graphics_context_set_text_color(ctx, GColorBlack);
-    char* icon_number;
-    if (strcmp(dep_item.icon, "bus") == 0) {
-      icon_number = "1";
-    } else if (strcmp(dep_item.icon, "tram") == 0) {
-      icon_number = "2";
-    } else if (strcmp(dep_item.icon, "train") == 0) {
-      icon_number = "3";
-    } else if (strcmp(dep_item.icon, "boat") == 0) {
-      icon_number = "4";
-    } else if (strcmp(dep_item.icon, "funicular") == 0) {
-      icon_number = "5";
-    } else if (strcmp(dep_item.icon, "cable_car") == 0) {
-      icon_number = "6";
-    } else {
-      icon_number = "";
-    }
-  graphics_draw_text(ctx,
-     icon_number,
-     s_icons,
-     icon_bounds,
-     GTextOverflowModeFill,
-     GTextAlignmentCenter,
-     NULL
-  );
+  GRect countdown_bounds = GRect(0, 40, bounds.size.w, bounds.size.h - 38);
   static char s_buff[16];
   if(dep_item.countdown > 60) {
     strncpy(s_buff, ">1h", 16);
   } else if(dep_item.countdown > 0) {
-    //snprintf(s_buff, sizeof(s_buff), "00:%d%d", dep_item.countdown / 10, dep_item.countdown % 10);
-    snprintf(s_buff, sizeof(s_buff), "%d'", dep_item.countdown);
+    snprintf(s_buff, sizeof(s_buff), "00:%d%d", dep_item.countdown / 10, dep_item.countdown % 10);
   }
-  icon_bounds.origin.y += 50;
   graphics_draw_text(ctx,
-    s_buff,
-    fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-    icon_bounds,
-    GTextOverflowModeFill,
-    GTextAlignmentCenter,
-    NULL
-  );
+      s_buff,
+      fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS),
+      countdown_bounds,
+      GTextOverflowModeFill,
+      GTextAlignmentCenter,
+      NULL);
+
+  GRect icon_bounds = GRect(0, 90, bounds.size.w, bounds.size.h - 38);
+  char* icon_number;
+  if (strcmp(dep_item.icon, "bus") == 0) {
+    icon_number = "1";
+  } else if (strcmp(dep_item.icon, "tram") == 0) {
+    icon_number = "2";
+  } else if (strcmp(dep_item.icon, "train") == 0) {
+    icon_number = "3";
+  } else if (strcmp(dep_item.icon, "boat") == 0) {
+    icon_number = "4";
+  } else if (strcmp(dep_item.icon, "funicular") == 0) {
+    icon_number = "5";
+  } else if (strcmp(dep_item.icon, "cable_car") == 0) {
+    icon_number = "6";
+  } else {
+    icon_number = "";
+  }
+  graphics_draw_text(ctx,
+      icon_number,
+      s_icons,
+      icon_bounds,
+      GTextOverflowModeFill,
+      GTextAlignmentCenter,
+      NULL);
 }
 
 static void main_window_load(Window *window) {
@@ -140,8 +137,8 @@ void dep_init() {
   departure = window_create();
   window_set_background_color(departure, GColorWhite);
   window_set_window_handlers(departure, (WindowHandlers) {
-    .load = main_window_load,
-    .unload = main_window_unload
+      .load = main_window_load,
+      .unload = main_window_unload
   });
 }
 

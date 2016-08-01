@@ -2,7 +2,7 @@
 #include "windows/departures.h"
 #include "windows/departure.h"
 #include "modules/communication.h"
-  
+
 static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
 static int DEPARTURES_WINDOW_HEADER_HEIGHT = 22;
 static int ICON_SIZE = 30;
@@ -19,7 +19,7 @@ static int deps_count = -1; // how many items were loaded ATM
 static int deps_max_count = -1; // how many items we are expecting (i.e. buffer size)
 static DEP_Item *deps_items = NULL; // buffer for items
 static char stationName[32]; //name of station
-  
+
 static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
   return 1;
 }
@@ -32,11 +32,12 @@ static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_
   graphics_draw_line(ctx, GPoint(0, bounds.origin.y), GPoint(bounds.size.w, bounds.origin.y));
   graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
   graphics_draw_text(ctx,
-    stationName,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-    GRect(0, -2, bounds.size.w, 18), GTextOverflowModeTrailingEllipsis,
-    GTextAlignmentCenter, NULL
-  );
+      stationName,
+      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+      GRect(0, -2, bounds.size.w, 18),
+      GTextOverflowModeTrailingEllipsis,
+      GTextAlignmentCenter,
+      NULL);
 }
 
 static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
@@ -46,8 +47,6 @@ static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t sectio
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *context) {
   if(deps_count < 0) // not initialized
     return 0; // statusbar must already contain "Connecting..." message
-  /*else if(deps_count == 0) // no data*/
-    /*return 1;*/
   else
     return deps_count;
 }
@@ -67,11 +66,11 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
 #endif
 
   GRect frame = GRect(
-    bounds.origin.x + ICON_SIZE + 3*PADDING,
-    0,
-    bounds.size.w - 2*ICON_SIZE - PADDING,
-    bounds.size.h/2
-  );
+      bounds.origin.x + ICON_SIZE + 3*PADDING,
+      0,
+      bounds.size.w - 2*ICON_SIZE - PADDING,
+      bounds.size.h/2
+      );
 
   // draw direction
   // expand frame width if countdown on the right is small
@@ -79,23 +78,23 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     frame.size.w += 10;
   }
   graphics_draw_text(ctx,
-    deps_items[idx->row].direction,
-    fonts_get_system_font(FONT_KEY_GOTHIC_14),
-    frame,
-    GTextOverflowModeTrailingEllipsis,
-    GTextAlignmentLeft,
-    NULL
-  );
+      deps_items[idx->row].direction,
+      fonts_get_system_font(FONT_KEY_GOTHIC_14),
+      frame,
+      GTextOverflowModeTrailingEllipsis,
+      GTextAlignmentLeft,
+      NULL);
+
   // draw time of scheduled departure plus delay
   frame.origin.y += 12;
   graphics_draw_text(ctx,
-    deps_items[idx->row].time,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18),
-    frame,
-    GTextOverflowModeTrailingEllipsis,
-    GTextAlignmentLeft,
-    NULL
-  );
+      deps_items[idx->row].time,
+      fonts_get_system_font(FONT_KEY_GOTHIC_18),
+      frame,
+      GTextOverflowModeTrailingEllipsis,
+      GTextAlignmentLeft,
+      NULL);
+
   // draw time until real time departure
   frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE - PADDING;
   frame.origin.y = 0;
@@ -124,13 +123,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     frame.size.w = ICON_SIZE+2;
     frame.size.h = ICON_SIZE;
     graphics_draw_text(ctx,
-      icon_number,
-      s_icons,
-      frame,
-      GTextOverflowModeWordWrap,
-      GTextAlignmentCenter,
-      NULL
-    );
+        icon_number,
+        s_icons,
+        frame,
+        GTextOverflowModeWordWrap,
+        GTextAlignmentCenter,
+        NULL);
   } else {
     static char s_buff[16];
     if(deps_items[idx->row].countdown > 60) {
@@ -139,13 +137,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
     }
     graphics_draw_text(ctx,
-      s_buff,
-      fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-      frame,
-      GTextOverflowModeFill,
-      GTextAlignmentRight,
-      NULL
-    );
+        s_buff,
+        fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
+        frame,
+        GTextOverflowModeFill,
+        GTextAlignmentRight,
+        NULL);
   }
 
   // draw line icon with colors
@@ -194,13 +191,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   }
 
   graphics_draw_text(ctx,
-    name,
-    font,
-    frame,
-    GTextOverflowModeFill,
-    GTextAlignmentCenter,
-    NULL
-  );
+      name,
+      font,
+      frame,
+      GTextOverflowModeFill,
+      GTextAlignmentCenter,
+      NULL);
 }
 
 static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context) {
@@ -216,7 +212,7 @@ static void main_window_load(Window *window) {
   // Load the custom font
   s_icons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_ICONS_32));
   s_helvetic_bold = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_HELVETICA_BOLD_20));
-  
+
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
@@ -231,13 +227,13 @@ static void main_window_load(Window *window) {
   s_menu_layer = menu_layer_create(bounds);
 #endif
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
-    .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
-    .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
-    .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
-    .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
-    .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
-    .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
-    .select_click = (MenuLayerSelectCallback)select_callback,
+      .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
+      .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
+      .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
+      .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
+      .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
+      .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
+      .select_click = (MenuLayerSelectCallback)select_callback,
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
   menu_layer_set_highlight_colors(s_menu_layer, COLOR_FALLBACK(GColorCobaltBlue, GColorBlack), GColorWhite);
@@ -275,8 +271,8 @@ void deps_init() {
   departures = window_create();
   window_set_background_color(departures, GColorClear);
   window_set_window_handlers(departures, (WindowHandlers) {
-    .load = main_window_load,
-    .unload = main_window_unload
+      .load = main_window_load,
+      .unload = main_window_unload
   });
 }
 

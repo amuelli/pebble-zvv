@@ -45,27 +45,27 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     if(scope == SCOPE_STA) {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "station id: %d", (int)dict_find(iter, MESSAGE_KEY_id)->value->uint32);
       sta_set_item(i, (STA_Item){
-        .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
-        .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
-        .distance = dict_find(iter, MESSAGE_KEY_distance)->value->uint32,
+          .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
+          .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
+          .distance = dict_find(iter, MESSAGE_KEY_distance)->value->uint32,
       });
     } else if(scope == SCOPE_FAV) {
       sta_fav_set_item(i, (STA_Item){
-        .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
-        .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
-        .distance = 0,
+          .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
+          .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
+          .distance = 0,
       });
     } else if(scope == SCOPE_DEPS) {
       deps_set_item(i, (DEP_Item){
-        .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
-        .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
-        .icon = dict_find(iter, MESSAGE_KEY_icon)->value->cstring,
-        .color_fg = dict_find(iter, MESSAGE_KEY_colorFg)->value->uint32,
-        .color_bg = dict_find(iter, MESSAGE_KEY_colorBg)->value->uint32,
-        .direction = dict_find(iter, MESSAGE_KEY_direction)->value->cstring,
-        .time = dict_find(iter, MESSAGE_KEY_time)->value->cstring,
-        .delay = (int)dict_find(iter, MESSAGE_KEY_delay)->value->uint32,
-        .countdown = (int)dict_find(iter, MESSAGE_KEY_countdown)->value->uint32,
+          .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,
+          .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
+          .icon = dict_find(iter, MESSAGE_KEY_icon)->value->cstring,
+          .color_fg = dict_find(iter, MESSAGE_KEY_colorFg)->value->uint32,
+          .color_bg = dict_find(iter, MESSAGE_KEY_colorBg)->value->uint32,
+          .direction = dict_find(iter, MESSAGE_KEY_direction)->value->cstring,
+          .time = dict_find(iter, MESSAGE_KEY_time)->value->cstring,
+          .delay = (int)dict_find(iter, MESSAGE_KEY_delay)->value->uint32,
+          .countdown = (int)dict_find(iter, MESSAGE_KEY_countdown)->value->uint32,
       });
     }
   }
