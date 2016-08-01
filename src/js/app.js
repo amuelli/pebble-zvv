@@ -1,12 +1,24 @@
 var keys = require('message_keys');
-var xhrRequest = function (url, type, callback) {
+function xhrRequest (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
     callback(this.responseText);
   };
   xhr.open(type, url);
   xhr.send();
-};
+}
+
+function encode(o, sep) {
+  var list = [];
+  var key;
+  for (key in o) {
+    if (o[key] != null && typeof o[key] != 'object' &&
+      typeof o[key] != 'function') {
+      list.push(encodeURIComponent(key) + '=' + encodeURIComponent(o[key]));
+    }
+  }
+  return list.join(sep || '&');
+}
 
 var g_msg_buffer = [];
 var g_msg_transaction = null;
@@ -71,14 +83,15 @@ function sendMessage(data, success, failure) {
 }
 
 function getStations(x, y) {
-  var url = "http://transport.opendata.ch/v1/locations?x=" + x + "&y=" + y;
+  var url = "http://transport.opendata.ch/v1/locations?";
   console.log(url);
-  xhrRequest(url, 'GET',
+  var params = encode({ x: x, y: y });
+  xhrRequest(url+params, 'GET',
     function(responseText) {
       var json = JSON.parse(responseText);
       var stations = json.stations;
       var dict = {};
-      
+
       //TODO: better handling of unsuccessful requests
       dict[keys.code] = 20; // array start/size
       dict[keys.scope] = 0;
@@ -86,13 +99,13 @@ function getStations(x, y) {
       sendMessage(dict);
       for( var i = 0; i < stations.length; i++) {
         var station = stations[i];
-        
+
         // shorten station names
         station.name = station.name.replace(/^Basel, /, '');
         station.name = station.name.replace(/^Bern, /, '');
         station.name = station.name.replace(/^Zürich, /, '');
         station.name = station.name.replace(/Bahnhof/, 'Bhf');
-        
+
         dict = {};
         dict[keys.code] = 21;
         dict[keys.scope] = 0;
@@ -152,11 +165,26 @@ function decodeHTMLSpecialCharacters(input) {
   });
 }
 
-// get departures of station from inofficial ZVV API
-function getDeparturesZVV(stationId) {
-  var url = 'http://online.fahrplan.zvv.ch/bin/stboard.exe/dny?input=' + stationId + '&dirInput=&maxJourneys=10&boardType=dep&start=1&tpl=stbResult2json';
+/**
+ * get departures of station from inofficial ZVV API
+ * @param {number} stationId station id to get departures from
+ * @param {number=} dirStationId station id to get departures to
+ * @param {number} max maximal numbers of departures
+ */
+function getDeparturesZVV(stationId, dirStationId, max) {
+  var dirInput = dirStationId | '';
+  var maxJourneys = max | '10';
+  var url = 'http://online.fahrplan.zvv.ch/bin/stboard.exe/dny?';
   console.log(url);
-  xhrRequest(url, 'POST',
+  var params = encode({
+    input: stationId,
+    dirInput: dirStationId,
+    maxJourneys: max,
+    boardType: 'dep',
+    start: 1,
+    tpl: 'stbResult2json'
+  });
+  xhrRequest(url+params, 'POST',
     function(responseText) {
       //console.log(responseText);
       var json = JSON.parse(responseText);
@@ -165,17 +193,17 @@ function getDeparturesZVV(stationId) {
       //var departures = json.connections.slice(0,9);
       var departures = json.connections;
       //TODO: save in local storage for later retreival
-      
+
 
       var dict = {};
       dict[keys.code] = 20; // array start/size
       dict[keys.scope] = 2;
       dict[keys.count] = departures.length;
       sendMessage(dict);
-      
+
       for( var i = 0; i < departures.length; i++) {
         var dep = departures[i];
-        
+
         var name = dep.product.line;
         if(!name) {
           name = dep.product.name;
@@ -183,10 +211,10 @@ function getDeparturesZVV(stationId) {
         name = name.replace(/     /, '');
         name = name.substring(0,4);
         //name = name.replace(/S /, 'S');
-        
+
         var icon = dep.product.icon;
         icon = icon.replace(/^icon_/, '');
-        
+
         var direction = decodeHTMLSpecialCharacters(dep.product.direction);
         // shorten direction names
         direction = direction.replace(/^Basel, /, '');
@@ -194,14 +222,14 @@ function getDeparturesZVV(stationId) {
         direction = direction.replace(/^St.Gallen, /, '');
         direction = direction.replace(/^Zürich, /, '');
         direction = direction.replace(/^Bahnhof/, 'Bhf');
-        
+
         var colorFg = '000000';
         var colorBg = 'ffffff';
         if(dep.product.color) {
           colorFg = dep.product.color.fg;
           colorBg = dep.product.color.bg;
         }
-        
+
         var realTime = dep.mainLocation.realTime;
         var countdown = dep.mainLocation.countdown;
         // set delay and adapt countdown if real time info available
@@ -210,13 +238,13 @@ function getDeparturesZVV(stationId) {
           delay = parseInt(realTime.delay);
           countdown = realTime.countdown;
         }
-        
+
         // set departure time (with delay)
         var dep_time = dep.mainLocation.time;
         if(delay > 0) {
           dep_time = dep_time + ' +' + delay + "'";
         }
-        
+
         dict = {};
         dict[keys.code] = 21;
         dict[keys.scope] = 2;
@@ -235,20 +263,21 @@ function getDeparturesZVV(stationId) {
         console.log(JSON.stringify(dict));
         // Send to Pebble
         sendMessage(dict);
-      }      
-      
+      }
+
       dict = {};
       dict[keys.code] = 22;
       dict[keys.scope] = 2;
       dict[keys.count] = departures.length;
       sendMessage(dict);
     }
-  ); 
+  );
 }
 
+
 var locationOptions = {
-  enableHighAccuracy: true, 
-  maximumAge: 10000, 
+  enableHighAccuracy: true,
+  maximumAge: 10000,
   timeout: 10000
 };
 
@@ -267,7 +296,7 @@ Pebble.addEventListener("ready",
     // Request current position
     navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
 });
-                        
+
 // Called when incoming message from the Pebble is received
 Pebble.addEventListener("appmessage", function(e) {
   console.log("Received message: " + JSON.stringify(e.payload));
@@ -278,7 +307,7 @@ Pebble.addEventListener("appmessage", function(e) {
           getStations();
           break;
       case 2: // departures of station
-          getDeparturesZVV(e.payload.id);
+          getDeparturesZVV(e.payload.id, null, 10);
           break;
       default:
           break;
