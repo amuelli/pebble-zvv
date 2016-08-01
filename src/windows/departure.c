@@ -24,11 +24,11 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     default : color_bg = GColorFromHEX(dep_item.color_bg);
   }
   GColor color_fg = GColorFromHEX(dep_item.color_fg);
-  graphics_context_set_fill_color(ctx, color_bg);
+  graphics_context_set_fill_color(ctx, COLOR_FALLBACK(color_bg, GColorWhite));
   graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
   if(gcolor_equal(color_bg, GColorWhite))
     graphics_draw_line(ctx, GPoint(0, rect_bounds.size.h), GPoint(rect_bounds.size.w, rect_bounds.size.h));
-  graphics_context_set_text_color(ctx, color_fg);
+  graphics_context_set_text_color(ctx, COLOR_FALLBACK(color_fg, GColorBlack));
   char * name = dep_item.name;
   GFont font;
   if(strlen(name) <= 2) {
