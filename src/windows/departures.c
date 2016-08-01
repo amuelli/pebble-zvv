@@ -13,6 +13,7 @@ static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
 
 static GFont s_icons;
+static GFont s_helvetic_bold;
 
 static int deps_count = -1; // how many items were loaded ATM
 static int deps_max_count = -1; // how many items we are expecting (i.e. buffer size)
@@ -101,24 +102,10 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   frame.origin.y = 0;
   frame.size.w = ICON_SIZE;
   frame.size.h = ICON_SIZE;
-  static char s_buff[16];
-  if(deps_items[idx->row].countdown > 0) {
-    snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
-    graphics_draw_text(ctx,
-      s_buff,
-      fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-      frame,
-      GTextOverflowModeFill,
-      GTextAlignmentRight,
-      NULL
-    );
-  } else {
-    frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE;
-    frame.origin.y = 0;
-    frame.size.w = ICON_SIZE+2;
-    frame.size.h = ICON_SIZE;
+  if(deps_items[idx->row].countdown == 0) {
+    // draw icon if departure is imminent
     char* icon_number;
-    if (strcmp((char*)deps_items[idx->row].icon, "bus") == 0) {
+    if (strcmp(deps_items[idx->row].icon, "bus") == 0) {
       icon_number = "1";
     } else if (strcmp(deps_items[idx->row].icon, "tram") == 0) {
       icon_number = "2";
@@ -126,17 +113,38 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       icon_number = "3";
     } else if (strcmp(deps_items[idx->row].icon, "boat") == 0) {
       icon_number = "4";
-    } else if (strcmp(deps_items[idx->row].icon, "cable") == 0) {
+    } else if (strcmp(deps_items[idx->row].icon, "funicular") == 0) {
       icon_number = "5";
+    } else if (strcmp(deps_items[idx->row].icon, "cable_car") == 0) {
+      icon_number = "6";
     } else {
       icon_number = "";
     }
+    frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE;
+    frame.origin.y = 0;
+    frame.size.w = ICON_SIZE+2;
+    frame.size.h = ICON_SIZE;
     graphics_draw_text(ctx,
       icon_number,
       s_icons,
       frame,
       GTextOverflowModeWordWrap,
       GTextAlignmentCenter,
+      NULL
+    );
+  } else {
+    static char s_buff[16];
+    if(deps_items[idx->row].countdown > 60) {
+      strncpy(s_buff, ">1h", 16);
+    } else if(deps_items[idx->row].countdown > 0) {
+      snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
+    }
+    graphics_draw_text(ctx,
+      s_buff,
+      fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
+      frame,
+      GTextOverflowModeFill,
+      GTextAlignmentRight,
       NULL
     );
   }
@@ -157,15 +165,27 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   GColor color_fg = GColorFromHEX(deps_items[idx->row].color_fg);
   graphics_context_set_fill_color(ctx, color_bg);
   graphics_fill_rect(ctx, frame, 3, GCornersAll);
-  if(gcolor_equal(color_bg, GColorWhite))
-    graphics_draw_round_rect(ctx, frame, 3);
+  if(!gcolor_equal(color_bg, GColorWhite) || menu_cell_layer_is_highlighted(cell_layer)) {
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+  }
+  graphics_draw_round_rect(ctx, frame, 3);
   graphics_context_set_text_color(ctx, color_fg);
   char * name = deps_items[idx->row].name;
   GFont font;
-  if(strlen(name) <= 2) {
-    frame.origin.y -= 4;
-    font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
-    if(strlen(name) == 1) { frame.origin.x += 1; }
+  if(strlen(name) == 1) {
+    frame.origin.x += 1;
+    frame.origin.y += 3;
+    /*font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);*/
+    font = s_helvetic_bold;
+  } else if(strlen(name) == 2) {
+    // correct position if 2nd digit is "1"
+    if (strstr(name+1, "1") != NULL) {
+      frame.origin.x += 2;
+    }
+    frame.origin.y += 3;
+    /*font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);*/
+    font = s_helvetic_bold;
+    /*if(strlen(name) == 1) { frame.origin.x += 1; }*/
   } else if(strlen(name) == 3){
     frame.origin.y += 3;
     font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
@@ -173,7 +193,7 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
     frame.origin.y += 6;
     font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
   }
-            
+
   graphics_draw_text(ctx,
     name,
     font,
@@ -196,6 +216,7 @@ static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *
 static void main_window_load(Window *window) {
   // Load the custom font
   s_icons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_ICONS_32));
+  s_helvetic_bold = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_HELVETICA_BOLD_20));
   
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);

@@ -182,6 +182,7 @@ function getDeparturesZVV(stationId) {
         }
         name = name.replace(/     /, '');
         name = name.substring(0,4);
+        //name = name.replace(/S /, 'S');
         
         var icon = dep.product.icon;
         icon = icon.replace(/^icon_/, '');
