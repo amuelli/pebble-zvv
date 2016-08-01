@@ -1,12 +1,24 @@
 var keys = require('message_keys');
-var xhrRequest = function (url, type, callback) {
+function xhrRequest (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
     callback(this.responseText);
   };
   xhr.open(type, url);
   xhr.send();
-};
+}
+
+function encode(o, sep) {
+  var list = [];
+  var key;
+  for (key in o) {
+    if (o[key] != null && typeof o[key] != 'object' &&
+      typeof o[key] != 'function') {
+      list.push(encodeURIComponent(key) + '=' + encodeURIComponent(o[key]));
+    }
+  }
+  return list.join(sep || '&');
+}
 
 var g_msg_buffer = [];
 var g_msg_transaction = null;
@@ -71,9 +83,10 @@ function sendMessage(data, success, failure) {
 }
 
 function getStations(x, y) {
-  var url = "http://transport.opendata.ch/v1/locations?x=" + x + "&y=" + y;
+  var url = "http://transport.opendata.ch/v1/locations?";
   console.log(url);
-  xhrRequest(url, 'GET',
+  var params = encode({ x: x, y: y });
+  xhrRequest(url+params, 'GET',
     function(responseText) {
       var json = JSON.parse(responseText);
       var stations = json.stations;
@@ -152,11 +165,26 @@ function decodeHTMLSpecialCharacters(input) {
   });
 }
 
-// get departures of station from inofficial ZVV API
-function getDeparturesZVV(stationId) {
-  var url = 'http://online.fahrplan.zvv.ch/bin/stboard.exe/dny?input=' + stationId + '&dirInput=&maxJourneys=10&boardType=dep&start=1&tpl=stbResult2json';
+/**
+ * get departures of station from inofficial ZVV API
+ * @param {number} stationId station id to get departures from
+ * @param {number=} dirStationId station id to get departures to
+ * @param {number} max maximal numbers of departures
+ */
+function getDeparturesZVV(stationId, dirStationId, max) {
+  var dirInput = dirStationId | '';
+  var maxJourneys = max | '10';
+  var url = 'http://online.fahrplan.zvv.ch/bin/stboard.exe/dny?';
   console.log(url);
-  xhrRequest(url, 'POST',
+  var params = encode({
+    input: stationId,
+    dirInput: dirStationId,
+    maxJourneys: max,
+    boardType: 'dep',
+    start: 1,
+    tpl: 'stbResult2json'
+  });
+  xhrRequest(url+params, 'POST',
     function(responseText) {
       //console.log(responseText);
       var json = JSON.parse(responseText);
@@ -246,6 +274,7 @@ function getDeparturesZVV(stationId) {
   ); 
 }
 
+
 var locationOptions = {
   enableHighAccuracy: true, 
   maximumAge: 10000, 
@@ -278,7 +307,7 @@ Pebble.addEventListener("appmessage", function(e) {
           getStations();
           break;
       case 2: // departures of station
-          getDeparturesZVV(e.payload.id);
+          getDeparturesZVV(e.payload.id, null, 10);
           break;
       default:
           break;
