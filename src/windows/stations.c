@@ -11,7 +11,7 @@ static int PADDING = 2;
 static int PADDING = 0;
 #endif
 char * sectionTitles[]={"Favourite Stations","Nearby Stations"};
-  
+
 static Window *stations;
 static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
@@ -35,11 +35,13 @@ static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_
   graphics_draw_line(ctx, GPoint(0, bounds.origin.y), GPoint(bounds.size.w, bounds.origin.y));
   int lowerY = bounds.origin.y + bounds.size.h - 1;
   graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
-  graphics_draw_text(ctx, sectionTitles[section_index],
-    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-    GRect(0, -2, bounds.size.w, 18), GTextOverflowModeTrailingEllipsis,
-    GTextAlignmentCenter, NULL
-  );
+  graphics_draw_text(ctx,
+      sectionTitles[section_index],
+      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+      GRect(0, -2, bounds.size.w, 18),
+      GTextOverflowModeTrailingEllipsis,
+      GTextAlignmentCenter,
+      NULL);
 }
 
 static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
@@ -63,8 +65,6 @@ static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_in
     case 1:
       if(nrStations < 0) // not initialized
         return 0; // statusbar must already contain "Connecting..." message
-      /*else if(nrStations == 0) // no data*/
-        /*return 1;*/
       else
         return nrStations;
       break;
@@ -77,35 +77,32 @@ static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_in
 static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, void *context) {
   GRect bounds = layer_get_bounds(cell_layer);
   GRect frame = GRect(
-    PADDING,
-    -2,
-    bounds.size.w,
-    bounds.size.h/2 - 2*PADDING
-  );
+      PADDING,
+      -2,
+      bounds.size.w,
+      bounds.size.h/2 - 2*PADDING);
   switch(idx->section) {
     case 0:
       menu_cell_basic_draw(ctx, cell_layer, sta_fav_items[idx->row].name, NULL, NULL);
       break;
     case 1:
       graphics_draw_text(ctx,
-        sta_items[idx->row].name,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18),
-        frame,
-        GTextOverflowModeTrailingEllipsis,
-        PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
-        NULL
-      );
+          sta_items[idx->row].name,
+          fonts_get_system_font(FONT_KEY_GOTHIC_18),
+          frame,
+          GTextOverflowModeTrailingEllipsis,
+          PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+          NULL);
       static char distance[10];
       snprintf(distance, sizeof(distance), "%dm", sta_items[idx->row].distance);
       frame.origin.y = bounds.size.h/2 - 4;
       graphics_draw_text(ctx,
-        distance,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18),
-        frame,
-        GTextOverflowModeTrailingEllipsis,
-        PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
-        NULL
-      );
+          distance,
+          fonts_get_system_font(FONT_KEY_GOTHIC_18),
+          frame,
+          GTextOverflowModeTrailingEllipsis,
+          PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+          NULL);
       break;
   }
 }
@@ -133,7 +130,7 @@ static void main_window_load(Window *window) {
   s_status_bar = status_bar_layer_create();
   status_bar_layer_set_separator_mode(s_status_bar, StatusBarLayerSeparatorModeNone);
   status_bar_layer_set_colors(s_status_bar, GColorBlack, GColorWhite);
-  
+
   // Create MenuLayer
 #if defined(PBL_RECT)
   s_menu_layer = menu_layer_create(GRect(0,STATUS_BAR_LAYER_HEIGHT,bounds.size.w,bounds.size.h));
@@ -141,13 +138,13 @@ static void main_window_load(Window *window) {
   s_menu_layer = menu_layer_create(bounds);
 #endif
   menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
-    .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
-    .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
-    .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
-    .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
-    .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
-    .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
-    .select_click = (MenuLayerSelectCallback)select_callback,
+      .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
+      .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
+      .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
+      .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
+      .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
+      .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
+      .select_click = (MenuLayerSelectCallback)select_callback
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
   menu_layer_set_highlight_colors(s_menu_layer, GColorCobaltBlue, GColorWhite);
@@ -186,8 +183,8 @@ void sta_init() {
   stations = window_create();
   window_set_background_color(stations, GColorBlack);
   window_set_window_handlers(stations, (WindowHandlers) {
-    .load = main_window_load,
-    .unload = main_window_unload
+      .load = main_window_load,
+      .unload = main_window_unload
   });
 }
 
@@ -196,7 +193,6 @@ void sta_deinit() {
 }
 
 void sta_show() {
-//   com_get_nearby_stations();
   window_stack_push(stations, true);
 }
 
