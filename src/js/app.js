@@ -1,4 +1,7 @@
 var keys = require('message_keys');
+
+var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
+var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
@@ -11,26 +14,21 @@ var xhrRequest = function (url, type, callback) {
 var g_msg_buffer = [];
 var g_msg_transaction = null;
 
-/**
- * Sends appMessage to pebble; logs errors.
- * failure: may be True to use the same callback as for success.
- */
 function sendMessage(data, success, failure) {
   function sendNext() {
     g_msg_transaction = null;
     var next = g_msg_buffer.shift();
-    if(next) { // have another msg to send
+    if(next) {
       sendMessage(next);
     }
   }
-  if(g_msg_transaction) { // busy
+  if(g_msg_transaction) {
     g_msg_buffer.push(data);
-  } else { // free
+  } else {
     g_msg_transaction = Pebble.sendAppMessage(data,
       function(e) {
         console.log("Message sent for transactionId=" + e.data.transactionId);
-        //clearTimeout(msgTimeout);
-        if(g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId) // -1 if unsupported
+        if(g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
           console.log("### Confused! Message sent which is not a current message. "+
               "Current="+g_msg_transaction+", sent="+e.data.transactionId);
         if(success)
@@ -40,7 +38,6 @@ function sendMessage(data, success, failure) {
       function(e) {
         console.log("Failed to send message for transactionId=" + e.data.transactionId +
             ", error is "+("message" in e.error ? e.error.message : "(none)"));
-        //clearTimeout(msgTimeout);
         if(g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
           console.log("### Confused! Message not sent, but it is not a current message. "+
               "Current="+g_msg_transaction+", unsent="+e.data.transactionId);
@@ -52,22 +49,20 @@ function sendMessage(data, success, failure) {
         sendNext();
       }
     );
-    if(g_msg_transaction === undefined) { // iOS buggy sendAppMessage
-      g_msg_transaction = -1; // just a dummy "non-false" value for sendNext and friends
+    if(g_msg_transaction === undefined) {
+      g_msg_transaction = -1;
     }
-//     var msgTimeout = setTimeout(function() {
-//       console.log("Message timeout! Sending next.");
-//       // FIXME: it could be really delivered. Maybe add special handler?
-//       if(failure === true) {
-//         if(success)
-//           success();
-//         } else if(failure) {
-//           failure();
-//         }
-//         sendNext();
-//     }, g_msg_timeout);
     console.log("transactionId="+g_msg_transaction+" for msg "+JSON.stringify(data));
   }
+}
+
+function cleanStationName(name) {
+  return name
+    .replace(/^Basel, /, '')
+    .replace(/^Bern, /, '')
+    .replace(/^St\.Gallen, /, '')
+    .replace(/^Zürich, /, '')
+    .replace(/Bahnhof/, 'Bhf');
 }
 
 function getStations(x, y) {
@@ -76,30 +71,26 @@ function getStations(x, y) {
   xhrRequest(url, 'GET',
     function(responseText) {
       var json = JSON.parse(responseText);
-      var stations = json.stations;
+      var stations = json.stations.filter(function(station) {
+        return station.id != null;
+      });
       var dict = {};
-      
-      //TODO: better handling of unsuccessful requests
-      dict[keys.code] = 20; // array start/size
-      dict[keys.scope] = 0;
+
+      dict[keys.code] = CODE.ARRAY_START;
+      dict[keys.scope] = SCOPE.STA;
       dict[keys.count] = stations.length;
       sendMessage(dict);
       for( var i = 0; i < stations.length; i++) {
         var station = stations[i];
-        
-        // shorten station names
-        station.name = station.name.replace(/^Basel, /, '');
-        station.name = station.name.replace(/^Bern, /, '');
-        station.name = station.name.replace(/^Zürich, /, '');
-        station.name = station.name.replace(/Bahnhof/, 'Bhf');
-        
+        station.name = cleanStationName(station.name);
+
         dict = {};
-        dict[keys.code] = 21;
-        dict[keys.scope] = 0;
+        dict[keys.code] = CODE.ARRAY_ITEM;
+        dict[keys.scope] = SCOPE.STA;
         dict[keys.item] = i;
         dict[keys.id] = parseInt(station.id,10);
         dict[keys.name] = station.name;
-        dict[keys.distance] = station.distance;
+        dict[keys.distance] = station.distance == null ? -1 : station.distance;
         console.log(JSON.stringify(dict));
         sendMessage(dict);
       }
@@ -107,178 +98,174 @@ function getStations(x, y) {
   );
 }
 
-
-
-function decodeHTMLSpecialCharacters(input) {
-  //mapping of encoding of special character relevant to German, French and Italian
-  var htmlEncoding = {
-    '192' : 'À',
-    '193' : 'Á',
-    '194' : 'Â',
-    '196' : 'Ä',
-    '199' : 'Ç',
-    '200' : 'È',
-    '201' : 'É',
-    '202' : 'Ê',
-    '204' : 'Ì',
-    '205' : 'Í',
-    '210' : 'Ò',
-    '211' : 'Ó',
-    '212' : 'Ô',
-    '214' : 'Ö',
-    '220' : 'Ü',
-    '223' : 'ß',
-    '224' : 'à',
-    '225' : 'á',
-    '226' : 'â',
-    '228' : 'ä',
-    '231' : 'ç',
-    '232' : 'è',
-    '233' : 'é',
-    '234' : 'ê',
-    '236' : 'ì',
-    '237' : 'í',
-    '242' : 'ò',
-    '243' : 'ó',
-    '244' : 'ô',
-    '246' : 'ö',
-    '249' : 'ù',
-    '250' : 'ú',
-    '251' : 'û',
-    '252' : 'ü'
-  };
-  return input.replace(/&#(\d{2,3});/g, function(match, p1){
-    return htmlEncoding[p1];
-  });
-}
-
-// get departures of station from inofficial ZVV API
-function getDeparturesZVV(stationId) {
-  var url = 'http://online.fahrplan.zvv.ch/bin/stboard.exe/dny?input=' + stationId + '&dirInput=&maxJourneys=10&boardType=dep&start=1&tpl=stbResult2json';
+function getDeparturesHafas(stationId) {
+  var url = 'https://zvv.hafas.cloud/restproxy/departureBoard?format=json&accessId=OFPubique&type=DEP_STATION&duration=1439&maxJourneys=10&id=' + stationId;
   console.log(url);
-  xhrRequest(url, 'POST',
+  xhrRequest(url, 'GET',
     function(responseText) {
-      //console.log(responseText);
       var json = JSON.parse(responseText);
-      var stationName = decodeHTMLSpecialCharacters(json.station.name);
-      console.log(stationName);
-      //var departures = json.connections.slice(0,9);
-      var departures = json.connections;
-      //TODO: save in local storage for later retreival
-      
+      var departures = json.Departure || [];
 
-      var dict = {};
-      dict[keys.code] = 20; // array start/size
-      dict[keys.scope] = 2;
-      dict[keys.count] = departures.length;
+      var dict = {
+        [keys.code]: CODE.ARRAY_START,
+        [keys.scope]: SCOPE.DEPS,
+        [keys.count]: departures.length
+      };
       sendMessage(dict);
-      
-      for( var i = 0; i < departures.length; i++) {
-        var dep = departures[i];
-        
-        var name = dep.product.line;
-        if(!name) {
-          name = dep.product.name;
+
+      var now = new Date();
+      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      var mappedDepartures = departures.map(function(dep) {
+        var name = '';
+        if (dep.ProductAtStop && dep.ProductAtStop.icon && dep.ProductAtStop.icon.txt) {
+          name = dep.ProductAtStop.icon.txt.substring(0, 4).trim();
+        } else if (dep.ProductAtStop && dep.ProductAtStop.name) {
+          name = dep.ProductAtStop.name.substring(0, 4).trim();
         }
-        name = name.replace(/     /, '');
-        name = name.substring(0,4);
-        //name = name.replace(/S /, 'S');
-        
-        var icon = dep.product.icon;
-        icon = icon.replace(/^icon_/, '');
-        
-        var direction = decodeHTMLSpecialCharacters(dep.product.direction);
-        // shorten direction names
-        direction = direction.replace(/^Basel, /, '');
-        direction = direction.replace(/^Bern, /, '');
-        direction = direction.replace(/^St.Gallen, /, '');
-        direction = direction.replace(/^Zürich, /, '');
-        direction = direction.replace(/^Bahnhof/, 'Bhf');
-        
-        var colorFg = '000000';
-        var colorBg = 'ffffff';
-        if(dep.product.color) {
-          colorFg = dep.product.color.fg;
-          colorBg = dep.product.color.bg;
-        }
-        
-        var realTime = dep.mainLocation.realTime;
-        var countdown = dep.mainLocation.countdown;
-        // set delay and adapt countdown if real time info available
+
+        var direction = cleanStationName(dep.direction || '').trim();
+
+        var dep_time = (dep.time || '').substring(0, 5);
         var delay = 0;
-        if(realTime.hasRealTime) {
-          delay = parseInt(realTime.delay);
-          countdown = realTime.countdown;
+
+        if(dep.rtTime && dep.time && dep.rtTime !== dep.time) {
+          var schParts = dep.time.split(':');
+          var rtParts = dep.rtTime.split(':');
+          var schMins = parseInt(schParts[0]) * 60 + parseInt(schParts[1]);
+          var rtMins = parseInt(rtParts[0]) * 60 + parseInt(rtParts[1]);
+          delay = rtMins - schMins;
+          if(delay < -120) delay += 1440;
         }
-        
-        // set departure time (with delay)
-        var dep_time = dep.mainLocation.time;
+
         if(delay > 0) {
           dep_time = dep_time + ' +' + delay + "'";
         }
-        
-        dict = {};
-        dict[keys.code] = 21;
-        dict[keys.scope] = 2;
-        dict[keys.item] = i;
-        dict[keys.id] = i;
-        dict[keys.name] = name;
-        dict[keys.icon] = icon;
-        dict[keys.direction] = direction;
-        dict[keys.colorFg] = parseInt(colorFg, 16); //convert in hex value;
-        dict[keys.colorBg] = parseInt(colorBg, 16); //convert in hex value;
-        dict[keys.delay] = delay;
-        dict[keys.countdown] = parseInt(countdown);
-        dict[keys.time] = dep_time;
 
-// //         console.log(JSON.stringify(dep));
-        console.log(JSON.stringify(dict));
-        // Send to Pebble
+        var depTimeStr = dep.rtTime || dep.time || '00:00';
+        var depParts = depTimeStr.split(':');
+        var depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1]);
+        var countdown = depMinutes - nowMinutes;
+        if (countdown < -120) countdown += 1440;
+        countdown = Math.max(0, countdown);
+
+        var colorFg = '000000';
+        var colorBg = 'ffffff';
+
+        if(dep.ProductAtStop && dep.ProductAtStop.icon) {
+          var icon = dep.ProductAtStop.icon;
+          if(icon.foregroundColor && icon.foregroundColor.hex) {
+            colorFg = icon.foregroundColor.hex.substring(1);
+          }
+          if(icon.backgroundColor && icon.backgroundColor.hex) {
+            colorBg = icon.backgroundColor.hex.substring(1);
+          }
+        }
+
+        var icon = (dep.ProductAtStop && dep.ProductAtStop.catOutL)
+          ? dep.ProductAtStop.catOutL.toLowerCase()
+          : '';
+
+        return {
+          name: name,
+          icon: icon,
+          direction: direction,
+          colorFg: colorFg,
+          colorBg: colorBg,
+          delay: delay,
+          countdown: countdown,
+          time: dep_time
+        };
+      }).sort(function(a, b) {
+        return a.countdown - b.countdown;
+      });
+
+      for(var i = 0; i < mappedDepartures.length; i++) {
+        var dep = mappedDepartures[i];
+        dict = {
+          [keys.code]: CODE.ARRAY_ITEM,
+          [keys.scope]: SCOPE.DEPS,
+          [keys.item]: i,
+          [keys.id]: i,
+          [keys.name]: dep.name,
+          [keys.icon]: dep.icon,
+          [keys.direction]: dep.direction,
+          [keys.colorFg]: parseInt(dep.colorFg, 16),
+          [keys.colorBg]: parseInt(dep.colorBg, 16),
+          [keys.delay]: dep.delay,
+          [keys.countdown]: dep.countdown,
+          [keys.time]: dep.time
+        };
         sendMessage(dict);
-      }      
-      
-      dict = {};
-      dict[keys.code] = 22;
-      dict[keys.scope] = 2;
-      dict[keys.count] = departures.length;
+      }
+
+      dict = {
+        [keys.code]: CODE.ARRAY_END,
+        [keys.scope]: SCOPE.DEPS,
+        [keys.count]: mappedDepartures.length
+      };
       sendMessage(dict);
     }
-  ); 
+  );
 }
 
-var locationOptions = {
-  enableHighAccuracy: true, 
-  maximumAge: 10000, 
-  timeout: 10000
-};
+var g_last_lat = null;
+var g_last_lon = null;
 
-function locationSuccess(pos) {
-  console.log('lat= ' + pos.coords.latitude + ' lon= ' + pos.coords.longitude);
-  getStations(pos.coords.latitude, pos.coords.longitude);
+function getLocation(highAccuracy, onSuccess, onError) {
+  navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+    enableHighAccuracy: highAccuracy,
+    maximumAge: 10000,
+    timeout: 15000
+  });
 }
 
-function locationError(err) {
-  console.log('location error (' + err.code + '): ' + err.message);
+function handleLocation(lat, lon) {
+  var dist = (g_last_lat !== null)
+    ? Math.abs(lat - g_last_lat) + Math.abs(lon - g_last_lon)
+    : Infinity;
+  if (dist > 0.001) { // ~100m threshold
+    g_last_lat = lat;
+    g_last_lon = lon;
+    console.log('lat= ' + lat + ' lon= ' + lon);
+    getStations(lat, lon);
+  } else {
+    console.log('location unchanged, skipping refresh');
+  }
 }
 
-// Called when JS is ready
-Pebble.addEventListener("ready",
-    function(e) {
-    // Request current position
-    navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
+Pebble.addEventListener("ready", function(e) {
+  // Phase 1: fast low-accuracy fix
+  getLocation(false,
+    function(pos) {
+      handleLocation(pos.coords.latitude, pos.coords.longitude);
+
+      // Phase 2: refine with high-accuracy fix
+      getLocation(true,
+        function(pos2) {
+          handleLocation(pos2.coords.latitude, pos2.coords.longitude);
+        },
+        function(err) {
+          console.log('high-accuracy error (' + err.code + '): ' + err.message);
+        }
+      );
+    },
+    function(err) {
+      console.log('location error (' + err.code + '): ' + err.message);
+    }
+  );
 });
-                        
-// Called when incoming message from the Pebble is received
+
 Pebble.addEventListener("appmessage", function(e) {
   console.log("Received message: " + JSON.stringify(e.payload));
   switch(e.payload.code) {
-  case 10: // get info
+  case CODE.GET:
       switch(e.payload.scope) {
-      case 0: // nearest stations
+      case SCOPE.STA:
           getStations();
           break;
-      case 2: // departures of station
-          getDeparturesZVV(e.payload.id);
+      case SCOPE.DEPS:
+          getDeparturesHafas(e.payload.id);
           break;
       default:
           break;
@@ -290,7 +277,6 @@ Pebble.addEventListener("appmessage", function(e) {
 });
 
 Pebble.addEventListener('showConfiguration', function(e) {
-  // Show config page
   Pebble.openURL('http://188.166.34.8:5000');
 });
 
@@ -302,22 +288,17 @@ Pebble.addEventListener('webviewclosed', function(e) {
   console.log(stations.length);
   if(stations.length > 0) {
     var dict = {};
-    dict[keys.code] = 20;
-    dict[keys.scope] = 1;
+    dict[keys.code] = CODE.ARRAY_START;
+    dict[keys.scope] = SCOPE.FAV;
     dict[keys.count] = stations.length;
     sendMessage(dict);
     for( var i = 0; i < stations.length; i++) {
       var station = stations[i];
-
-      // shorten station names
-      station.name = station.name.replace(/^Basel, /, '');
-      station.name = station.name.replace(/^Bern, /, '');
-      station.name = station.name.replace(/^Zürich, /, '');
-      station.name = station.name.replace(/Bahnhof/, 'Bhf');
+      station.name = cleanStationName(station.name);
 
       dict = {};
-      dict[keys.code] = 21;
-      dict[keys.scope] = 1;
+      dict[keys.code] = CODE.ARRAY_ITEM;
+      dict[keys.scope] = SCOPE.FAV;
       dict[keys.item] = i;
       dict[keys.id] = parseInt(station.id,10);
       dict[keys.name] = station.name;

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Alexander Mülli",
   "private": true,
   "dependencies": {},
@@ -69,7 +69,9 @@
     },
     "targetPlatforms": [
       "basalt",
-      "chalk"
+      "chalk",
+      "diorite",
+      "emery"
     ],
     "capabilities": [
       "location",
