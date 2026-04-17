@@ -286,7 +286,7 @@ void deps_deinit() {
   deps_free_items();
 }
 
-void deps_show(int station_id, const char* station_name) {
+void deps_show(int station_id, const char *station_name) {
   strcpy(stationName, station_name);
   window_stack_push(departures, true);
   menu_layer_reload_data(s_menu_layer);

@@ -1,13 +1,13 @@
 #pragma once
 
 // Storage codes
-#define STORAGE_NR_FAVORITES     99
-#define STORAGE_FAVORITE_NAME   100
-#define STORAGE_FAVORITE_ID     200
+#define STORAGE_NR_FAVORITES 99
+#define STORAGE_FAVORITE_NAME 100
+#define STORAGE_FAVORITE_ID 200
 
 typedef struct {
   int id;
-  char* name;
+  char *name;
   int distance;
 } STA_Item;
 

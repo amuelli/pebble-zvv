@@ -1,8 +1,8 @@
-#include <pebble.h>
 #include <modules/communication.h>
-#include <windows/stations.h>
-#include <windows/departures.h>
+#include <pebble.h>
 #include <windows/departure.h>
+#include <windows/departures.h>
+#include <windows/stations.h>
 
 void init(void) {
   comm_init();
@@ -21,7 +21,7 @@ void deinit(void) {
   dep_deinit();
 }
 
-int main( void ) {
+int main(void) {
   init();
   app_event_loop();
   deinit();

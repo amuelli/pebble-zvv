@@ -1,5 +1,7 @@
-#include <pebble.h>
 #include "windows/stations.h"
+
+#include <pebble.h>
+
 #include "modules/communication.h"
 #include "windows/departures.h"
 
@@ -10,19 +12,19 @@ static int PADDING = 2;
 #elif defined(PBL_ROUND)
 static int PADDING = 0;
 #endif
-char * sectionTitles[]={"Favourite Stations","Nearby Stations"};
+char *sectionTitles[] = {"Favourite Stations", "Nearby Stations"};
 
 static Window *stations;
 static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
 static TextLayer *s_loading_layer;
 
-static int nrStations = -1; // how many nearby stations were loaded
-static int sta_max_count = -1; // how many nearby stations we are expecting (i.e. buffer size)
-static int nrFavorites = 0; // how many favorite stations are configured
-static int sta_fav_max_count = -1; // how many favorite stations we are expecting (i.e. buffer size)
-static STA_Item *sta_items = NULL; // buffer for nearby stations
-static STA_Item *sta_fav_items = NULL; // buffer for favorite stations
+static int nrStations = -1;             // how many nearby stations were loaded
+static int sta_max_count = -1;          // how many nearby stations we are expecting (i.e. buffer size)
+static int nrFavorites = 0;             // how many favorite stations are configured
+static int sta_fav_max_count = -1;      // how many favorite stations we are expecting (i.e. buffer size)
+static STA_Item *sta_items = NULL;      // buffer for nearby stations
+static STA_Item *sta_fav_items = NULL;  // buffer for favorite stations
 
 static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
   return 2;
@@ -37,19 +39,21 @@ static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_
   int lowerY = bounds.origin.y + bounds.size.h - 1;
   graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
   graphics_draw_text(ctx,
-      sectionTitles[section_index],
-      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-      GRect(0, -2, bounds.size.w, 18),
-      GTextOverflowModeTrailingEllipsis,
-      GTextAlignmentCenter,
-      NULL);
+                     sectionTitles[section_index],
+                     fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                     GRect(0, -2, bounds.size.w, 18),
+                     GTextOverflowModeTrailingEllipsis,
+                     GTextAlignmentCenter,
+                     NULL);
 }
 
 static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t section_index, void *data) {
-  switch (section_index) {
+  switch(section_index) {
     case 0:
-      if (nrFavorites==0) return 0;
-      else return STATIONS_WINDOW_HEADER_HEIGHT;
+      if(nrFavorites == 0)
+        return 0;
+      else
+        return STATIONS_WINDOW_HEADER_HEIGHT;
       break;
     case 1:
     default:
@@ -59,13 +63,13 @@ static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t sectio
 }
 
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *context) {
-  switch (section_index) {
+  switch(section_index) {
     case 0:
       return nrFavorites;
       break;
     case 1:
-      if(nrStations < 0) // not initialized
-        return 0; // statusbar must already contain "Connecting..." message
+      if(nrStations < 0)  // not initialized
+        return 0;         // statusbar must already contain "Connecting..." message
       else
         return nrStations;
       break;
@@ -81,30 +85,30 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       PADDING,
       -2,
       bounds.size.w,
-      bounds.size.h/2 - 2*PADDING);
+      bounds.size.h / 2 - 2 * PADDING);
   switch(idx->section) {
     case 0:
       menu_cell_basic_draw(ctx, cell_layer, sta_fav_items[idx->row].name, NULL, NULL);
       break;
     case 1:
       graphics_draw_text(ctx,
-          sta_items[idx->row].name,
-          fonts_get_system_font(FONT_KEY_GOTHIC_18),
-          frame,
-          GTextOverflowModeTrailingEllipsis,
-          PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
-          NULL);
-      if (sta_items[idx->row].distance != -1) {
+                         sta_items[idx->row].name,
+                         fonts_get_system_font(FONT_KEY_GOTHIC_18),
+                         frame,
+                         GTextOverflowModeTrailingEllipsis,
+                         PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+                         NULL);
+      if(sta_items[idx->row].distance != -1) {
         static char distance[10];
         snprintf(distance, sizeof(distance), "%dm", sta_items[idx->row].distance);
-        frame.origin.y = bounds.size.h/2 - 4;
+        frame.origin.y = bounds.size.h / 2 - 4;
         graphics_draw_text(ctx,
-            distance,
-            fonts_get_system_font(FONT_KEY_GOTHIC_18),
-            frame,
-            GTextOverflowModeTrailingEllipsis,
-            PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
-            NULL);
+                           distance,
+                           fonts_get_system_font(FONT_KEY_GOTHIC_18),
+                           frame,
+                           GTextOverflowModeTrailingEllipsis,
+                           PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+                           NULL);
       }
       break;
   }
@@ -136,19 +140,11 @@ static void main_window_load(Window *window) {
 
   // Create MenuLayer
 #if defined(PBL_RECT)
-  s_menu_layer = menu_layer_create(GRect(0,STATUS_BAR_LAYER_HEIGHT,bounds.size.w,bounds.size.h));
+  s_menu_layer = menu_layer_create(GRect(0, STATUS_BAR_LAYER_HEIGHT, bounds.size.w, bounds.size.h));
 #elif defined(PBL_ROUND)
   s_menu_layer = menu_layer_create(bounds);
 #endif
-  menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks) {
-      .get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback,
-      .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback,
-      .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback,
-      .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback,
-      .draw_row = (MenuLayerDrawRowCallback)draw_row_callback,
-      .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback,
-      .select_click = (MenuLayerSelectCallback)select_callback
-  });
+  menu_layer_set_callbacks(s_menu_layer, NULL, (MenuLayerCallbacks){.get_num_sections = (MenuLayerGetNumberOfSectionsCallback)get_num_sections_callback, .get_num_rows = (MenuLayerGetNumberOfRowsInSectionsCallback)get_num_rows_callback, .get_cell_height = (MenuLayerGetCellHeightCallback)get_cell_height_callback, .get_header_height = (MenuLayerGetHeaderHeightCallback)get_header_height_callback, .draw_row = (MenuLayerDrawRowCallback)draw_row_callback, .draw_header = (MenuLayerDrawHeaderCallback)draw_header_callback, .select_click = (MenuLayerSelectCallback)select_callback});
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
 #if defined(PBL_COLOR)
   menu_layer_set_highlight_colors(s_menu_layer, GColorCobaltBlue, GColorWhite);
@@ -179,7 +175,7 @@ static void main_window_unload(Window *window) {
 }
 
 static void sta_free_items() {
-  for(int i=0; i<nrStations; i++) {
+  for(int i = 0; i < nrStations; i++) {
     free(sta_items[i].name);
   }
   free(sta_items);
@@ -187,7 +183,7 @@ static void sta_free_items() {
 }
 
 static void sta_fav_free_items() {
-  for(int i=0; i<nrFavorites; i++) {
+  for(int i = 0; i < nrFavorites; i++) {
     free(sta_fav_items[i].name);
   }
   free(sta_fav_items);
@@ -199,10 +195,9 @@ static void sta_fav_free_items() {
 void sta_init() {
   stations = window_create();
   window_set_background_color(stations, GColorBlack);
-  window_set_window_handlers(stations, (WindowHandlers) {
-      .load = main_window_load,
-      .unload = main_window_unload
-  });
+  window_set_window_handlers(stations, (WindowHandlers){
+                                           .load = main_window_load,
+                                           .unload = main_window_unload});
 }
 
 void sta_deinit() {
@@ -217,7 +212,7 @@ void sta_set_count(int count) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Setting count: %d", count);
   if(sta_items)
     sta_free_items();
-  sta_items = malloc(sizeof(STA_Item)*count);
+  sta_items = malloc(sizeof(STA_Item) * count);
   sta_max_count = count;
   nrStations = 0;
   layer_set_hidden(text_layer_get_layer(s_loading_layer), true);
@@ -226,7 +221,7 @@ void sta_set_count(int count) {
 void sta_fav_set_count(int count) {
   if(sta_fav_items)
     sta_fav_free_items();
-  sta_fav_items = malloc(sizeof(STA_Item)*count);
+  sta_fav_items = malloc(sizeof(STA_Item) * count);
   sta_fav_max_count = count;
   nrFavorites = 0;
 }
@@ -236,7 +231,7 @@ void sta_set_item(int i, STA_Item data) {
   sta_items[i].id = data.id;
   APP_LOG(APP_LOG_LEVEL_DEBUG, "id %d", data.id);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
-  sta_items[i].name = malloc(strlen(data.name)+5);
+  sta_items[i].name = malloc(strlen(data.name) + 5);
   strcpy(sta_items[i].name, data.name);
   // Set to 'unknown' if distance is -1
   sta_items[i].distance = (data.distance == -1) ? -1 : data.distance;
@@ -247,7 +242,7 @@ void sta_set_item(int i, STA_Item data) {
 
 void sta_fav_set_item(int i, STA_Item data) {
   sta_fav_items[i].id = data.id;
-  sta_fav_items[i].name = malloc(strlen(data.name)+5);
+  sta_fav_items[i].name = malloc(strlen(data.name) + 5);
   strcpy(sta_fav_items[i].name, data.name);
   nrFavorites++;
   menu_layer_reload_data(s_menu_layer);
@@ -255,20 +250,20 @@ void sta_fav_set_item(int i, STA_Item data) {
 
 void load_favorites() {
   nrFavorites = persist_read_int(STORAGE_NR_FAVORITES);
-  APP_LOG(APP_LOG_LEVEL_DEBUG,"Nr of saved favorites: %i", nrFavorites);
-  sta_fav_items = malloc(sizeof(STA_Item)*nrFavorites);
-  for (int i=0; i<nrFavorites; i++) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Nr of saved favorites: %i", nrFavorites);
+  sta_fav_items = malloc(sizeof(STA_Item) * nrFavorites);
+  for(int i = 0; i < nrFavorites; i++) {
     sta_fav_items[i].name = malloc(32);
-    persist_read_string(STORAGE_FAVORITE_NAME+i, sta_fav_items[i].name, 32);
-    sta_fav_items[i].id = persist_read_int(STORAGE_FAVORITE_ID+i);
+    persist_read_string(STORAGE_FAVORITE_NAME + i, sta_fav_items[i].name, 32);
+    sta_fav_items[i].id = persist_read_int(STORAGE_FAVORITE_ID + i);
   }
 }
 
 void save_favorites() {
   persist_write_int(STORAGE_NR_FAVORITES, nrFavorites);
-  for (int i=0; i<nrFavorites; i++) {
-    persist_write_string(STORAGE_FAVORITE_NAME+i, sta_fav_items[i].name);
-    persist_write_int(STORAGE_FAVORITE_ID+i, sta_fav_items[i].id);
+  for(int i = 0; i < nrFavorites; i++) {
+    persist_write_string(STORAGE_FAVORITE_NAME + i, sta_fav_items[i].name);
+    persist_write_int(STORAGE_FAVORITE_ID + i, sta_fav_items[i].id);
   }
-  APP_LOG(APP_LOG_LEVEL_DEBUG,"saved %i favorite(s)", nrFavorites);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "saved %i favorite(s)", nrFavorites);
 }

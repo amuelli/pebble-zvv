@@ -1,0 +1,7 @@
+---
+BasedOnStyle: Google
+ColumnLimit: 0
+IndentWidth: 2
+SpaceBeforeParens: Never
+PointerAlignment: Right
+IndentCaseLabels: true
