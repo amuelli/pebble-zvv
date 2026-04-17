@@ -3,29 +3,17 @@
 #include "windows/departures.h"
 #include "windows/stations.h"
 
-// Write message to buffer & send
-void send_message(void){
-  DictionaryIterator *iter;
-  /*APP_LOG(APP_LOG_LEVEL_DEBUG, "Send message");*/
-
-  app_message_outbox_begin(&iter);
-  dict_write_uint8(iter, MESSAGE_KEY_code, 0x1);
-
-  dict_write_end(iter);
-  app_message_outbox_send();
-}
-
 // Called when a message is received from PebbleKitJS
 static void in_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *tCode, *tScope;
 
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Incoming message"); 
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Incoming message");
   tCode = dict_find(iter, MESSAGE_KEY_code);
   tScope = dict_find(iter, MESSAGE_KEY_scope);
   int code = (int)tCode->value->uint32;
   int scope = (int)tScope->value->uint32;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Received Code: %d", code); 
-  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Received Code: %d", code);
+
   if(code == CODE_ARRAY_START) {
     int count = (int)dict_find(iter, MESSAGE_KEY_count)->value->int32;
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Items count: %d", count);
@@ -39,9 +27,9 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "Err!");
     }
   } else if(code == CODE_ARRAY_ITEM) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Receiving item"); 
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Receiving item");
     int i = (int)dict_find(iter, MESSAGE_KEY_item)->value->uint32;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Received item: %d", i); 
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Received item: %d", i);
     if(scope == SCOPE_STA) {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "station id: %d", (int)dict_find(iter, MESSAGE_KEY_id)->value->uint32);
       sta_set_item(i, (STA_Item){
@@ -73,10 +61,12 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
 
 // Called when an incoming message from PebbleKitJS is dropped
 static void in_dropped_handler(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_WARNING, "Inbox dropped, reason: %d", (int)reason);
 }
 
 // Called when PebbleKitJS does not acknowledge receipt of a message
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_WARNING, "Outbox failed, reason: %d", (int)reason);
 }
 
 void comm_get_deps(int stationId, int firstItemId) {
@@ -94,7 +84,7 @@ void comm_get_deps(int stationId, int firstItemId) {
   dict_write_tuplet(iter, &tFirstItemId);
   app_message_outbox_send();
 }
-  
+
 void comm_init() {
   // Register AppMessage handlers
   app_message_register_inbox_received(in_received_handler);

@@ -4,8 +4,6 @@
 
 #pragma once
 
-void send_message(void);
-
 // void comm_query_tasklists();
 // void comm_query_tasks(int);
 // void comm_query_task_details(int, int);
@@ -19,7 +17,6 @@ void send_message(void);
 // // If not available, show message in statusbar
 // bool comm_is_available();
 // bool comm_is_available_silent(); // don't update statusbar
-
 
 void comm_get_deps(int, int);
 void comm_init();
