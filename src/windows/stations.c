@@ -15,6 +15,7 @@ char * sectionTitles[]={"Favourite Stations","Nearby Stations"};
 static Window *stations;
 static MenuLayer *s_menu_layer;
 static StatusBarLayer *s_status_bar;
+static TextLayer *s_loading_layer;
 
 static int nrStations = -1; // how many nearby stations were loaded
 static int sta_max_count = -1; // how many nearby stations we are expecting (i.e. buffer size)
@@ -93,16 +94,18 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
           GTextOverflowModeTrailingEllipsis,
           PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
           NULL);
-      static char distance[10];
-      snprintf(distance, sizeof(distance), "%dm", sta_items[idx->row].distance);
-      frame.origin.y = bounds.size.h/2 - 4;
-      graphics_draw_text(ctx,
-          distance,
-          fonts_get_system_font(FONT_KEY_GOTHIC_18),
-          frame,
-          GTextOverflowModeTrailingEllipsis,
-          PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
-          NULL);
+      if (sta_items[idx->row].distance != -1) {
+        static char distance[10];
+        snprintf(distance, sizeof(distance), "%dm", sta_items[idx->row].distance);
+        frame.origin.y = bounds.size.h/2 - 4;
+        graphics_draw_text(ctx,
+            distance,
+            fonts_get_system_font(FONT_KEY_GOTHIC_18),
+            frame,
+            GTextOverflowModeTrailingEllipsis,
+            PBL_IF_RECT_ELSE(GTextAlignmentLeft, GTextAlignmentCenter),
+            NULL);
+      }
       break;
   }
 }
@@ -147,16 +150,30 @@ static void main_window_load(Window *window) {
       .select_click = (MenuLayerSelectCallback)select_callback
   });
   menu_layer_set_click_config_onto_window(s_menu_layer, window);
+#if defined(PBL_COLOR)
   menu_layer_set_highlight_colors(s_menu_layer, GColorCobaltBlue, GColorWhite);
+#else
+  menu_layer_set_highlight_colors(s_menu_layer, GColorBlack, GColorWhite);
+#endif
   menu_layer_set_normal_colors(s_menu_layer, GColorWhite, GColorBlack);
 
-  // add layers with status bar layer on top
+  // Loading indicator (hidden once stations arrive)
+  GRect menu_bounds = GRect(0, STATUS_BAR_LAYER_HEIGHT, bounds.size.w, bounds.size.h - STATUS_BAR_LAYER_HEIGHT);
+  s_loading_layer = text_layer_create(menu_bounds);
+  text_layer_set_text(s_loading_layer, "Loading...");
+  text_layer_set_font(s_loading_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+  text_layer_set_text_alignment(s_loading_layer, GTextAlignmentCenter);
+  text_layer_set_background_color(s_loading_layer, GColorWhite);
+  text_layer_set_text_color(s_loading_layer, GColorBlack);
+
+  // add layers with status bar and loading layer on top
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_loading_layer));
   layer_add_child(window_layer, status_bar_layer_get_layer(s_status_bar));
 }
 
 static void main_window_unload(Window *window) {
-  // Destroy output TextLayer
+  text_layer_destroy(s_loading_layer);
   status_bar_layer_destroy(s_status_bar);
   menu_layer_destroy(s_menu_layer);
 }
@@ -203,6 +220,7 @@ void sta_set_count(int count) {
   sta_items = malloc(sizeof(STA_Item)*count);
   sta_max_count = count;
   nrStations = 0;
+  layer_set_hidden(text_layer_get_layer(s_loading_layer), true);
 }
 
 void sta_fav_set_count(int count) {
@@ -220,7 +238,8 @@ void sta_set_item(int i, STA_Item data) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "name %s of size %d", data.name, strlen(data.name));
   sta_items[i].name = malloc(strlen(data.name)+5);
   strcpy(sta_items[i].name, data.name);
-  sta_items[i].distance = data.distance;
+  // Set to 'unknown' if distance is -1
+  sta_items[i].distance = (data.distance == -1) ? -1 : data.distance;
   nrStations++;
   menu_layer_reload_data(s_menu_layer);
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", nrStations);
