@@ -22,6 +22,20 @@ static int deps_max_count = -1;      // how many items we are expecting (i.e. bu
 static DEP_Item *deps_items = NULL;  // buffer for items
 static char stationName[32];         // name of station
 
+static int dep_countdown_mins(int dep_time) {
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  int now_secs = t->tm_hour * 3600 + t->tm_min * 60 + t->tm_sec;
+  int remaining = dep_time - now_secs;
+  if(remaining < -43200) remaining += 86400;
+  if(remaining < 0) remaining = 0;
+  return remaining / 60;
+}
+
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  layer_mark_dirty(window_get_root_layer(departures));
+}
+
 static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
   return 1;
 }
@@ -74,10 +88,6 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       bounds.size.h / 2);
 
   // draw direction
-  // expand frame width if countdown on the right is small
-  if(deps_items[idx->row].countdown > 0 && deps_items[idx->row].countdown < 10) {
-    frame.size.w += 10;
-  }
   graphics_draw_text(ctx,
                      deps_items[idx->row].direction,
                      fonts_get_system_font(FONT_KEY_GOTHIC_14),
@@ -97,11 +107,16 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
                      NULL);
 
   // draw time until real time departure
+  int countdown = dep_countdown_mins(deps_items[idx->row].dep_time);
+  // expand frame width if countdown on the right is small
+  if(countdown > 0 && countdown < 10) {
+    frame.size.w += 10;
+  }
   frame.origin.x = bounds.origin.x + bounds.size.w - ICON_SIZE - PADDING;
   frame.origin.y = 0;
   frame.size.w = ICON_SIZE;
   frame.size.h = ICON_SIZE;
-  if(deps_items[idx->row].countdown == 0) {
+  if(countdown == 0) {
     // draw icon if departure is imminent
     char *icon_number;
     if(strcmp(deps_items[idx->row].icon, "bus") == 0) {
@@ -132,10 +147,10 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
                        NULL);
   } else {
     static char s_buff[16];
-    if(deps_items[idx->row].countdown > 60) {
+    if(countdown > 60) {
       strncpy(s_buff, ">1h", 16);
-    } else if(deps_items[idx->row].countdown > 0) {
-      snprintf(s_buff, sizeof(s_buff), "%d'", deps_items[idx->row].countdown);
+    } else {
+      snprintf(s_buff, sizeof(s_buff), "%d'", countdown);
     }
     graphics_draw_text(ctx,
                        s_buff,
@@ -214,6 +229,14 @@ static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *
   dep_show(deps_items[idx->row]);
 }
 
+static void main_window_appear(Window *window) {
+  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+}
+
+static void main_window_disappear(Window *window) {
+  tick_timer_service_unsubscribe();
+}
+
 static void main_window_load(Window *window) {
   // Load the custom font
   s_icons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_ICONS_32));
@@ -278,7 +301,9 @@ void deps_init() {
   window_set_background_color(departures, GColorClear);
   window_set_window_handlers(departures, (WindowHandlers){
                                              .load = main_window_load,
-                                             .unload = main_window_unload});
+                                             .unload = main_window_unload,
+                                             .appear = main_window_appear,
+                                             .disappear = main_window_disappear});
 }
 
 void deps_deinit() {
@@ -327,9 +352,7 @@ void deps_set_item(int i, DEP_Item data) {
     strcpy(deps_items[i].time, data.time);
     deps_items[i].delay = data.delay;
     APP_LOG(APP_LOG_LEVEL_DEBUG, "delay %d", data.delay);
-    deps_items[i].countdown = data.countdown;
     deps_items[i].dep_time = data.dep_time;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "countdown %d", data.countdown);
     deps_count++;
     menu_layer_reload_data(s_menu_layer);
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Current count is %d", deps_count);

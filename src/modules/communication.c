@@ -55,7 +55,6 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
                            .direction = dict_find(iter, MESSAGE_KEY_direction)->value->cstring,
                            .time = dict_find(iter, MESSAGE_KEY_time)->value->cstring,
                            .delay = (int)dict_find(iter, MESSAGE_KEY_delay)->value->uint32,
-                           .countdown = (int)dict_find(iter, MESSAGE_KEY_countdown)->value->uint32,
                            .dep_time = (int)dict_find(iter, MESSAGE_KEY_depTime)->value->uint32,
                        });
     }

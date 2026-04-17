@@ -3,8 +3,6 @@ var keys = require('message_keys');
 // Set to coordinates for emulator testing, null to use real GPS
 // var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Zürich HB
 var DEBUG_LOCATION = null;
-// var DEBUG_TZ_OFFSET = 2; // CEST = UTC+2 (use 1 for CET in winter)
-var DEBUG_TZ_OFFSET = null;
 
 var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
 var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
@@ -119,11 +117,6 @@ function getDeparturesHafas(stationId) {
       };
       sendMessage(dict);
 
-      var now = new Date();
-      var nowMinutes = DEBUG_TZ_OFFSET !== null
-        ? now.getUTCHours() * 60 + now.getUTCMinutes() + DEBUG_TZ_OFFSET * 60
-        : now.getHours() * 60 + now.getMinutes();
-
       var mappedDepartures = departures.map(function(dep) {
         var name = '';
         if (dep.ProductAtStop && dep.ProductAtStop.icon && dep.ProductAtStop.icon.txt) {
@@ -152,11 +145,7 @@ function getDeparturesHafas(stationId) {
 
         var depTimeStr = dep.rtTime || dep.time || '00:00';
         var depParts = depTimeStr.split(':');
-        var depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1]);
         var depTimeSecs = parseInt(depParts[0]) * 3600 + parseInt(depParts[1]) * 60;
-        var countdown = depMinutes - nowMinutes;
-        if (countdown < -120) countdown += 1440;
-        countdown = Math.max(0, countdown);
 
         var colorFg = '000000';
         var colorBg = 'ffffff';
@@ -182,12 +171,11 @@ function getDeparturesHafas(stationId) {
           colorFg: colorFg,
           colorBg: colorBg,
           delay: delay,
-          countdown: countdown,
           depTimeSecs: depTimeSecs,
           time: dep_time
         };
       }).sort(function(a, b) {
-        return a.countdown - b.countdown;
+        return a.depTimeSecs - b.depTimeSecs;
       });
 
       for(var i = 0; i < mappedDepartures.length; i++) {
@@ -203,7 +191,6 @@ function getDeparturesHafas(stationId) {
           [keys.colorFg]: parseInt(dep.colorFg, 16),
           [keys.colorBg]: parseInt(dep.colorBg, 16),
           [keys.delay]: dep.delay,
-          [keys.countdown]: dep.countdown,
           [keys.depTime]: dep.depTimeSecs || 0,
           [keys.time]: dep.time
         };

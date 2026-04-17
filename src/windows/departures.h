@@ -9,7 +9,6 @@ typedef struct {
   char *direction;
   char *time;
   int delay;
-  int countdown;
   int dep_time;
 } DEP_Item;
 
