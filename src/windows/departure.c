@@ -11,11 +11,15 @@ static GFont s_helvetic_bold;
 
 static DEP_Item dep_item;
 
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  layer_mark_dirty(s_canvas_layer);
+}
+
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   // draw line icon with colors
   GRect rect_bounds = GRect(0, 0, bounds.size.w, bounds.size.w / 4);
-  GRect text_bounds = GRect(0, 0, PBL_IF_ROUND_ELSE(bounds.size.w, 40), bounds.size.w / 4);
+  GRect text_bounds = GRect(PBL_IF_ROUND_ELSE(0, 4), 0, PBL_IF_ROUND_ELSE(bounds.size.w, 40), bounds.size.w / 4);
   GColor color_bg;
   // correct some coloring
   switch(dep_item.color_bg) {
@@ -49,7 +53,7 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
                      font,
                      text_bounds,
                      GTextOverflowModeFill,
-                     PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentRight),
+                     PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft),
                      NULL);
 
   char *direction = dep_item.direction;
@@ -66,46 +70,124 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
                      PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft),
                      NULL);
 
-  graphics_context_set_text_color(ctx, GColorBlack);
-  GRect countdown_bounds = GRect(0, 40, bounds.size.w, bounds.size.h - 38);
-  static char s_buff[16];
-  if(dep_item.countdown > 60) {
-    strncpy(s_buff, ">1h", 16);
-  } else if(dep_item.countdown > 0) {
-    snprintf(s_buff, sizeof(s_buff), "00:%d%d", dep_item.countdown / 10, dep_item.countdown % 10);
-  }
-  graphics_draw_text(ctx,
-                     s_buff,
-                     fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS),
-                     countdown_bounds,
-                     GTextOverflowModeFill,
-                     GTextAlignmentCenter,
-                     NULL);
+  // compute remaining seconds against watch clock
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  int now_secs = t->tm_hour * 3600 + t->tm_min * 60 + t->tm_sec;
+  int remaining = dep_item.dep_time - now_secs;
+  if(remaining < -43200) remaining += 86400; // midnight wrap
+  bool after = remaining <= 0;
+  int elapsed = -remaining; // seconds since departure when after==true
+  if(remaining < 0) remaining = 0;
 
-  GRect icon_bounds = GRect(0, 90, bounds.size.w, bounds.size.h - 38);
-  char *icon_number;
-  if(strcmp(dep_item.icon, "bus") == 0) {
-    icon_number = "1";
-  } else if(strcmp(dep_item.icon, "tram") == 0) {
-    icon_number = "2";
-  } else if(strcmp(dep_item.icon, "train") == 0) {
-    icon_number = "3";
-  } else if(strcmp(dep_item.icon, "boat") == 0) {
-    icon_number = "4";
-  } else if(strcmp(dep_item.icon, "funicular") == 0) {
-    icon_number = "5";
-  } else if(strcmp(dep_item.icon, "cable_car") == 0) {
-    icon_number = "6";
+  bool blink_on = t->tm_sec % 2 == 0;
+  bool show_icon = after && (!blink_on || elapsed > 30); // blink for first 30s, then steady
+
+  static const int DW = 20;
+  static const int CW = 10;
+  static char s_a[4], s_b[4], s_c[4];
+  GFont leco = fonts_get_system_font(FONT_KEY_LECO_32_BOLD_NUMBERS);
+
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, GColorBlack);
+
+  if(after) {
+    // draw + sign manually (LECO has no + glyph)
+    int e_mins = elapsed / 60;
+    int e_secs = elapsed % 60;
+    int m_w = (e_mins >= 10) ? 2 * DW : DW;
+    int plus_w = 14;
+    int total = plus_w + m_w + CW + 2 * DW;
+    int x = (bounds.size.w - total) / 2;
+    graphics_fill_rect(ctx, GRect(x + 2, 62, 10, 3), 0, GCornerNone);  // horizontal bar
+    graphics_fill_rect(ctx, GRect(x + 6, 56, 3, 15), 0, GCornerNone);  // vertical bar
+    x += plus_w;
+    snprintf(s_a, sizeof(s_a), "%d", e_mins);
+    snprintf(s_b, sizeof(s_b), "%02d", e_secs);
+    graphics_draw_text(ctx, s_a, leco, GRect(x, 45, m_w, 40),
+                       GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    x += m_w;
+    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
+    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+    x += CW;
+    graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+                       GTextOverflowModeFill, GTextAlignmentLeft, NULL);
   } else {
-    icon_number = "";
+    // countdown before departure — no icon
+    if(remaining >= 3600) {
+      snprintf(s_a, sizeof(s_a), "%d",  remaining / 3600);
+      snprintf(s_b, sizeof(s_b), "%02d", (remaining % 3600) / 60);
+      snprintf(s_c, sizeof(s_c), "%02d", remaining % 60);
+      int h_w = (remaining >= 36000) ? 2 * DW : DW;
+      int total = h_w + CW + 2 * DW + CW + 2 * DW;
+      int x = (bounds.size.w - total) / 2;
+      graphics_draw_text(ctx, s_a, leco, GRect(x, 45, h_w, 40),
+                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+      x += h_w;
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      x += CW;
+      graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+      x += 2 * DW;
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      x += CW;
+      graphics_draw_text(ctx, s_c, leco, GRect(x, 45, 2 * DW, 40),
+                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    } else {
+      int mins = remaining / 60;
+      int secs = remaining % 60;
+      snprintf(s_a, sizeof(s_a), "%d",  mins);
+      snprintf(s_b, sizeof(s_b), "%02d", secs);
+      int m_w = (mins >= 10) ? 2 * DW : DW;
+      int total = m_w + CW + 2 * DW;
+      int x = (bounds.size.w - total) / 2;
+      graphics_draw_text(ctx, s_a, leco, GRect(x, 45, m_w, 40),
+                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+      x += m_w;
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      x += CW;
+      graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    }
   }
-  graphics_draw_text(ctx,
-                     icon_number,
-                     s_icons,
-                     icon_bounds,
-                     GTextOverflowModeFill,
-                     GTextAlignmentCenter,
-                     NULL);
+
+  if(show_icon) {
+    GRect icon_bounds = GRect(0, 95, bounds.size.w, bounds.size.h - 38);
+    char *icon_number;
+    if(strcmp(dep_item.icon, "bus") == 0) {
+      icon_number = "1";
+    } else if(strcmp(dep_item.icon, "tram") == 0) {
+      icon_number = "2";
+    } else if(strcmp(dep_item.icon, "train") == 0) {
+      icon_number = "3";
+    } else if(strcmp(dep_item.icon, "boat") == 0) {
+      icon_number = "4";
+    } else if(strcmp(dep_item.icon, "funicular") == 0) {
+      icon_number = "5";
+    } else if(strcmp(dep_item.icon, "cable_car") == 0) {
+      icon_number = "6";
+    } else {
+      icon_number = "";
+    }
+    graphics_draw_text(ctx,
+                       icon_number,
+                       s_icons,
+                       icon_bounds,
+                       GTextOverflowModeFill,
+                       GTextAlignmentCenter,
+                       NULL);
+  }
+}
+
+static void main_window_appear(Window *window) {
+  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+}
+
+static void main_window_disappear(Window *window) {
+  tick_timer_service_unsubscribe();
 }
 
 static void main_window_load(Window *window) {
@@ -134,6 +216,7 @@ static void main_window_unload(Window *window) {
   fonts_unload_custom_font(s_helvetic_bold);
   // Destroy TextLayer
   status_bar_layer_destroy(s_status_bar);
+  layer_destroy(s_canvas_layer);
 }
 
 /* Public functions */
@@ -143,12 +226,13 @@ void dep_init() {
   window_set_background_color(departure, GColorWhite);
   window_set_window_handlers(departure, (WindowHandlers){
                                             .load = main_window_load,
-                                            .unload = main_window_unload});
+                                            .unload = main_window_unload,
+                                            .appear = main_window_appear,
+                                            .disappear = main_window_disappear});
 }
 
 void dep_deinit() {
   window_destroy(departure);
-  // dep_free_items();
 }
 
 void dep_show(DEP_Item data) {

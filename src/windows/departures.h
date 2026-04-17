@@ -10,6 +10,7 @@ typedef struct {
   char *time;
   int delay;
   int countdown;
+  int dep_time;
 } DEP_Item;
 
 void deps_init();

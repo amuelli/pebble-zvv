@@ -58,6 +58,7 @@
       "time",
       "delay",
       "countdown",
+      "depTime",
       "distance"
     ],
     "enableMultiJS": true,

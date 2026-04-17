@@ -328,6 +328,7 @@ void deps_set_item(int i, DEP_Item data) {
     deps_items[i].delay = data.delay;
     APP_LOG(APP_LOG_LEVEL_DEBUG, "delay %d", data.delay);
     deps_items[i].countdown = data.countdown;
+    deps_items[i].dep_time = data.dep_time;
     APP_LOG(APP_LOG_LEVEL_DEBUG, "countdown %d", data.countdown);
     deps_count++;
     menu_layer_reload_data(s_menu_layer);

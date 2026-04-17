@@ -1,5 +1,11 @@
 var keys = require('message_keys');
 
+// Set to coordinates for emulator testing, null to use real GPS
+// var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Zürich HB
+var DEBUG_LOCATION = null;
+// var DEBUG_TZ_OFFSET = 2; // CEST = UTC+2 (use 1 for CET in winter)
+var DEBUG_TZ_OFFSET = null;
+
 var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
 var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
 var xhrRequest = function (url, type, callback) {
@@ -114,7 +120,9 @@ function getDeparturesHafas(stationId) {
       sendMessage(dict);
 
       var now = new Date();
-      var nowMinutes = now.getHours() * 60 + now.getMinutes();
+      var nowMinutes = DEBUG_TZ_OFFSET !== null
+        ? now.getUTCHours() * 60 + now.getUTCMinutes() + DEBUG_TZ_OFFSET * 60
+        : now.getHours() * 60 + now.getMinutes();
 
       var mappedDepartures = departures.map(function(dep) {
         var name = '';
@@ -145,6 +153,7 @@ function getDeparturesHafas(stationId) {
         var depTimeStr = dep.rtTime || dep.time || '00:00';
         var depParts = depTimeStr.split(':');
         var depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1]);
+        var depTimeSecs = parseInt(depParts[0]) * 3600 + parseInt(depParts[1]) * 60;
         var countdown = depMinutes - nowMinutes;
         if (countdown < -120) countdown += 1440;
         countdown = Math.max(0, countdown);
@@ -174,6 +183,7 @@ function getDeparturesHafas(stationId) {
           colorBg: colorBg,
           delay: delay,
           countdown: countdown,
+          depTimeSecs: depTimeSecs,
           time: dep_time
         };
       }).sort(function(a, b) {
@@ -194,6 +204,7 @@ function getDeparturesHafas(stationId) {
           [keys.colorBg]: parseInt(dep.colorBg, 16),
           [keys.delay]: dep.delay,
           [keys.countdown]: dep.countdown,
+          [keys.depTime]: dep.depTimeSecs || 0,
           [keys.time]: dep.time
         };
         sendMessage(dict);
@@ -213,6 +224,13 @@ var g_last_lat = null;
 var g_last_lon = null;
 
 function getLocation(highAccuracy, onSuccess, onError) {
+  if (DEBUG_LOCATION) {
+    var delay = highAccuracy ? 800 + Math.random() * 700 : 200 + Math.random() * 300;
+    setTimeout(function() {
+      onSuccess({ coords: { latitude: DEBUG_LOCATION.lat, longitude: DEBUG_LOCATION.lon } });
+    }, delay);
+    return;
+  }
   navigator.geolocation.getCurrentPosition(onSuccess, onError, {
     enableHighAccuracy: highAccuracy,
     maximumAge: 10000,
