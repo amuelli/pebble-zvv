@@ -119,7 +119,8 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
   if(countdown == 0) {
     // draw icon if departure is imminent
     char *icon_number;
-    if(strcmp(deps_items[idx->row].icon, "bus") == 0) {
+    if(strcmp(deps_items[idx->row].icon, "bus") == 0 ||
+       strcmp(deps_items[idx->row].icon, "nachtbus") == 0) {
       icon_number = "1";
     } else if(strcmp(deps_items[idx->row].icon, "tram") == 0) {
       icon_number = "2";
@@ -230,7 +231,7 @@ static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *
 }
 
 static void main_window_appear(Window *window) {
-  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 }
 
 static void main_window_disappear(Window *window) {

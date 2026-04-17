@@ -157,7 +157,8 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   if(show_icon) {
     GRect icon_bounds = GRect(0, 95, bounds.size.w, bounds.size.h - 38);
     char *icon_number;
-    if(strcmp(dep_item.icon, "bus") == 0) {
+    if(strcmp(dep_item.icon, "bus") == 0 ||
+       strcmp(dep_item.icon, "nachtbus") == 0) {
       icon_number = "1";
     } else if(strcmp(dep_item.icon, "tram") == 0) {
       icon_number = "2";

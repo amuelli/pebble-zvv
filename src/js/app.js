@@ -1,8 +1,7 @@
 var keys = require('message_keys');
 
-// Set to coordinates for emulator testing, null to use real GPS
+// Uncomment for emulator testing with a fixed location instead of real GPS
 // var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Zürich HB
-var DEBUG_LOCATION = null;
 
 var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
 var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
@@ -32,7 +31,7 @@ function sendMessage(data, success, failure) {
     g_msg_transaction = Pebble.sendAppMessage(data,
       function(e) {
         console.log("Message sent for transactionId=" + e.data.transactionId);
-        if(g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
+        if(g_msg_transaction !== null && g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
           console.log("### Confused! Message sent which is not a current message. "+
               "Current="+g_msg_transaction+", sent="+e.data.transactionId);
         if(success)
@@ -42,7 +41,7 @@ function sendMessage(data, success, failure) {
       function(e) {
         console.log("Failed to send message for transactionId=" + e.data.transactionId +
             ", error is "+("message" in e.error ? e.error.message : "(none)"));
-        if(g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
+        if(g_msg_transaction !== null && g_msg_transaction >= 0 && g_msg_transaction != e.data.transactionId)
           console.log("### Confused! Message not sent, but it is not a current message. "+
               "Current="+g_msg_transaction+", unsent="+e.data.transactionId);
         if(failure === true) {
