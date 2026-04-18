@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Favourite Stations</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; font-size: 16px; background: #f5f5f5; color: #222; }
+  h1 { font-size: 1.1em; padding: 14px 16px 10px; background: #fff; border-bottom: 1px solid #ddd; }
+  h2 { font-size: 0.85em; text-transform: uppercase; color: #888; padding: 12px 16px 6px; }
+  #search-wrap { padding: 10px 16px; background: #fff; border-bottom: 1px solid #ddd; }
+  #search { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+  #results, #favs { list-style: none; background: #fff; }
+  #results li, #favs li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid #eee;
+  }
+  .name { flex: 1; }
+  button {
+    border: none; border-radius: 4px; padding: 5px 12px;
+    font-size: 14px; cursor: pointer;
+  }
+  .btn-add  { background: #007aff; color: #fff; }
+  .btn-rm   { background: #ff3b30; color: #fff; }
+  .btn-save { display: block; width: calc(100% - 32px); margin: 16px auto;
+              background: #34c759; color: #fff; padding: 12px; font-size: 16px;
+              border-radius: 8px; }
+  #limit-msg { display: none; color: #ff3b30; font-size: 13px; padding: 4px 16px 8px; }
+  #empty-favs { color: #aaa; font-size: 14px; padding: 10px 16px; }
+</style>
+</head>
+<body>
+
+<h1>Favourite Stations</h1>
+
+<div id="search-wrap">
+  <input id="search" type="search" placeholder="Search for a station…" autocomplete="off">
+</div>
+<p id="limit-msg">Maximum 10 favourites reached.</p>
+<ul id="results"></ul>
+
+<h2>Favourites</h2>
+<ul id="favs"><li id="empty-favs">No favourites yet.</li></ul>
+
+<button class="btn-save" id="save">Save &amp; Close</button>
+
+<script>
+(function() {
+  var INITIAL_DATA = null; /* __INITIAL_DATA_PLACEHOLDER__ */
+
+  var returnTo = 'pebblejs://close#';
+  var favs = [];
+  var MAX_FAVS = 10;
+  var debounceTimer = null;
+  var emptyLi = document.getElementById('empty-favs');
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function cleanName(name) {
+    return name
+      .replace(/^Basel, /, '')
+      .replace(/^Bern, /, '')
+      .replace(/^St\.Gallen, /, '')
+      .replace(/^Zürich, /, '')
+      .replace(/Bahnhof/, 'Bhf');
+  }
+
+  function renderFavs() {
+    var ul = document.getElementById('favs');
+    var limitMsg = document.getElementById('limit-msg');
+    ul.innerHTML = '';
+    if (favs.length === 0) {
+      ul.appendChild(emptyLi);
+    } else {
+      favs.forEach(function(s, idx) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span class="name">' + esc(s.name) + '</span>' +
+          '<button class="btn-rm" data-idx="' + idx + '">Remove</button>';
+        ul.appendChild(li);
+      });
+    }
+    limitMsg.style.display = favs.length >= MAX_FAVS ? '' : 'none';
+  }
+
+  function addFav(station) {
+    if (favs.length >= MAX_FAVS) return;
+    for (var i = 0; i < favs.length; i++) {
+      if (favs[i].id === station.id) return;
+    }
+    favs.push(station);
+    renderFavs();
+    saveLocal();
+  }
+
+  function removeFav(idx) {
+    favs.splice(idx, 1);
+    renderFavs();
+    saveLocal();
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem('zvv_favorites', JSON.stringify(favs)); } catch(e) {}
+  }
+
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem('zvv_favorites');
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return [];
+  }
+
+  function renderResults(stations) {
+    var ul = document.getElementById('results');
+    ul.innerHTML = '';
+    stations.forEach(function(s) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="name">' + esc(s.name) + '</span>' +
+        '<button class="btn-add" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">Add</button>';
+      ul.appendChild(li);
+    });
+  }
+
+  function doSearch(term) {
+    if (!term || term.length < 2) {
+      document.getElementById('results').innerHTML = '';
+      return;
+    }
+    var url = 'https://transport.opendata.ch/v1/locations?query=' + encodeURIComponent(term);
+    var xhr = new XMLHttpRequest();
+    xhr.onload = function() {
+      try {
+        var data = JSON.parse(this.responseText);
+        var stations = (data.stations || []).filter(function(s) {
+          return s.id != null;
+        }).slice(0, 8).map(function(s) {
+          return { id: s.id, name: cleanName(s.name || '') };
+        });
+        renderResults(stations);
+      } catch(e) {}
+    };
+    xhr.open('GET', url);
+    xhr.send();
+  }
+
+  // Event delegation for results "Add" buttons
+  document.getElementById('results').addEventListener('click', function(e) {
+    var btn = e.target;
+    if (btn.classList.contains('btn-add')) {
+      addFav({ id: btn.getAttribute('data-id'), name: btn.getAttribute('data-name') });
+    }
+  });
+
+  // Event delegation for favs "Remove" buttons
+  document.getElementById('favs').addEventListener('click', function(e) {
+    var btn = e.target;
+    if (btn.classList.contains('btn-rm')) {
+      removeFav(parseInt(btn.getAttribute('data-idx'), 10));
+    }
+  });
+
+  document.getElementById('search').addEventListener('input', function(e) {
+    var term = e.target.value.trim();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function() { doSearch(term); }, 350);
+  });
+
+  document.getElementById('save').addEventListener('click', function() {
+    saveLocal();
+    document.location = returnTo + encodeURIComponent(JSON.stringify({ stations: favs }));
+  });
+
+  // Initialise favourites
+  if (INITIAL_DATA && INITIAL_DATA.favourites && INITIAL_DATA.favourites.length) {
+    favs = INITIAL_DATA.favourites;
+  } else {
+    favs = loadLocal();
+  }
+  renderFavs();
+})();
+</script>
+</body>
+</html>

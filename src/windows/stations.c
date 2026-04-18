@@ -162,6 +162,8 @@ static void main_window_load(Window *window) {
   text_layer_set_background_color(s_loading_layer, GColorWhite);
   text_layer_set_text_color(s_loading_layer, GColorBlack);
 
+  layer_set_hidden(text_layer_get_layer(s_loading_layer), nrFavorites > 0);
+
   // add layers with status bar and loading layer on top
   layer_add_child(window_layer, menu_layer_get_layer(s_menu_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_loading_layer));

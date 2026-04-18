@@ -1,10 +1,21 @@
 var keys = require('message_keys');
+var configHtml = require('./config_html');
 
-// Uncomment for emulator testing with a fixed location instead of real GPS
-// var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Zürich HB
+var g_current_favourites = [];
+
+// var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Uncomment for emulator testing
+var DEBUG_LOCATION;
 
 var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
 var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
+
+function buildUrl(base, params) {
+  var query = Object.keys(params).map(function(k) {
+    return k + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  return base + '?' + query;
+}
+
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
@@ -102,7 +113,14 @@ function getStations(x, y) {
 }
 
 function getDeparturesHafas(stationId) {
-  var url = 'https://zvv.hafas.cloud/restproxy/departureBoard?format=json&accessId=OFPubique&type=DEP_STATION&duration=1439&maxJourneys=10&id=' + stationId;
+  var url = buildUrl('https://zvv.hafas.cloud/restproxy/departureBoard', {
+    format: 'json',
+    accessId: 'OFPubique',  // API access token
+    type: 'DEP_STATION',    // departures from a station
+    duration: 1439,         // time window in minutes (just under 24h)
+    maxJourneys: 10,        // max results returned
+    id: stationId
+  });
   console.log(url);
   xhrRequest(url, 'GET',
     function(responseText) {
@@ -281,33 +299,42 @@ Pebble.addEventListener("appmessage", function(e) {
 });
 
 Pebble.addEventListener('showConfiguration', function(e) {
-  Pebble.openURL('http://188.166.34.8:5000');
+  try {
+    var stored = localStorage.getItem('zvv_favorites');
+    if (stored) g_current_favourites = JSON.parse(stored);
+  } catch(ex) {}
+  var initData = JSON.stringify({ favourites: g_current_favourites });
+  var pageHtml = configHtml.replace(
+    'null; /* __INITIAL_DATA_PLACEHOLDER__ */',
+    initData + ';'
+  );
+  Pebble.openURL('data:text/html;charset=utf-8,' + encodeURIComponent(pageHtml));
 });
 
 Pebble.addEventListener('webviewclosed', function(e) {
-  var config_data = JSON.parse(decodeURIComponent(e.response));
+  if (!e.response || e.response === 'CANCELLED') return;
+  var config_data;
+  try { config_data = JSON.parse(decodeURIComponent(e.response)); } catch(ex) { return; }
   console.log('Config window returned: ' + JSON.stringify(config_data));
-  console.log('Config window returned: ' + JSON.stringify(config_data.stations));
-  var stations = config_data.stations;
-  console.log(stations.length);
-  if(stations.length > 0) {
-    var dict = {};
-    dict[keys.code] = CODE.ARRAY_START;
-    dict[keys.scope] = SCOPE.FAV;
-    dict[keys.count] = stations.length;
-    sendMessage(dict);
-    for( var i = 0; i < stations.length; i++) {
-      var station = stations[i];
-      station.name = cleanStationName(station.name);
+  var stations = config_data.stations || [];
+  g_current_favourites = stations;
+  try { localStorage.setItem('zvv_favorites', JSON.stringify(stations)); } catch(ex) {}
+  var dict = {};
+  dict[keys.code] = CODE.ARRAY_START;
+  dict[keys.scope] = SCOPE.FAV;
+  dict[keys.count] = stations.length;
+  sendMessage(dict);
+  for( var i = 0; i < stations.length; i++) {
+    var station = stations[i];
+    station.name = cleanStationName(station.name);
 
-      dict = {};
-      dict[keys.code] = CODE.ARRAY_ITEM;
-      dict[keys.scope] = SCOPE.FAV;
-      dict[keys.item] = i;
-      dict[keys.id] = parseInt(station.id,10);
-      dict[keys.name] = station.name;
-      console.log(JSON.stringify(dict));
-      sendMessage(dict);
-    }
+    dict = {};
+    dict[keys.code] = CODE.ARRAY_ITEM;
+    dict[keys.scope] = SCOPE.FAV;
+    dict[keys.item] = i;
+    dict[keys.id] = parseInt(station.id,10);
+    dict[keys.name] = station.name;
+    console.log(JSON.stringify(dict));
+    sendMessage(dict);
   }
 });
