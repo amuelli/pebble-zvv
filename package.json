@@ -61,7 +61,11 @@
       "delay",
       "depTime",
       "distance",
-      "FAVORITES"
+      "FAVORITES",
+      "LANGUAGE",
+      "DISRUPTIONS",
+      "note",
+      "body"
     ],
     "enableMultiJS": true,
     "displayName": "ZVV",

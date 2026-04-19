@@ -2,6 +2,7 @@
 #include <pebble.h>
 #include <windows/departure.h>
 #include <windows/departures.h>
+#include <windows/note.h>
 #include <windows/stations.h>
 
 void init(void) {
@@ -10,6 +11,7 @@ void init(void) {
   load_favorites();
   deps_init();
   dep_init();
+  note_init();
   sta_show();
 }
 
@@ -19,6 +21,7 @@ void deinit(void) {
   sta_deinit();
   deps_deinit();
   dep_deinit();
+  note_deinit();
 }
 
 int main(void) {

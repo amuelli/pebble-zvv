@@ -3,6 +3,7 @@
 #include <pebble.h>
 
 #include "modules/communication.h"
+#include "modules/strings.h"
 #include "windows/departures.h"
 
 static int STATIONS_WINDOW_CELL_HEIGHT = 36;
@@ -12,7 +13,6 @@ static int PADDING = 2;
 #elif defined(PBL_ROUND)
 static int PADDING = 0;
 #endif
-char *sectionTitles[] = {"Favorite Stations", "Nearby Stations"};
 
 static Window *stations;
 static MenuLayer *s_menu_layer;
@@ -39,7 +39,7 @@ static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_
   int lowerY = bounds.origin.y + bounds.size.h - 1;
   graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
   graphics_draw_text(ctx,
-                     sectionTitles[section_index],
+                     str(section_index == 0 ? STR_FAVORITE_STATIONS : STR_NEARBY_STATIONS),
                      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
                      GRect(0, -2, bounds.size.w, 18),
                      GTextOverflowModeTrailingEllipsis,

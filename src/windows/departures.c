@@ -3,7 +3,9 @@
 #include <pebble.h>
 
 #include "modules/communication.h"
+#include "modules/strings.h"
 #include "windows/departure.h"
+#include "windows/note.h"
 
 static int DEPARTURES_WINDOW_CELL_HEIGHT = 36;
 static int DEPARTURES_WINDOW_HEADER_HEIGHT = 22;
@@ -17,10 +19,19 @@ static StatusBarLayer *s_status_bar;
 static GFont s_icons;
 static GFont s_helvetic_bold;
 
-static int deps_count = -1;          // how many items were loaded ATM
-static int deps_max_count = -1;      // how many items we are expecting (i.e. buffer size)
-static DEP_Item *deps_items = NULL;  // buffer for items
-static char stationName[32];         // name of station
+#define MAX_NOTES 3
+#define NOTE_LEN 128
+#define BODY_LEN 200
+#define TIME_LEN 12
+
+static int deps_count = -1;
+static int deps_max_count = -1;
+static DEP_Item *deps_items = NULL;
+static char stationName[32];
+static char notes[MAX_NOTES][NOTE_LEN + 1];
+static char note_bodies[MAX_NOTES][BODY_LEN + 1];
+static char note_times[MAX_NOTES][TIME_LEN + 1];
+static int notes_count = 0;
 
 static int dep_countdown_mins(int dep_time) {
   time_t now = time(NULL);
@@ -37,7 +48,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 static uint16_t get_num_sections_callback(MenuLayer *menu_layer, void *data) {
-  return 1;
+  return (notes_count > 0) ? 2 : 1;
 }
 
 static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_t section_index, void *callback_context) {
@@ -47,8 +58,9 @@ static void draw_header_callback(GContext *ctx, const Layer *cell_layer, uint16_
   int lowerY = bounds.origin.y + bounds.size.h - 1;
   graphics_draw_line(ctx, GPoint(0, bounds.origin.y), GPoint(bounds.size.w, bounds.origin.y));
   graphics_draw_line(ctx, GPoint(0, lowerY), GPoint(bounds.size.w, lowerY));
+  const char *title = (notes_count > 0 && section_index == 0) ? str(STR_DISRUPTIONS) : stationName;
   graphics_draw_text(ctx,
-                     stationName,
+                     title,
                      fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
                      GRect(0, -2, bounds.size.w, 18),
                      GTextOverflowModeTrailingEllipsis,
@@ -61,14 +73,25 @@ static int16_t get_header_height_callback(MenuLayer *menu_layer, uint16_t sectio
 }
 
 static uint16_t get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *context) {
-  if(deps_count < 0)  // not initialized
-    return 0;         // statusbar must already contain "Connecting..." message
-  else
-    return deps_count;
+  if(notes_count > 0) {
+    if(section_index == 0) return notes_count;
+    return deps_count < 0 ? 0 : deps_count;
+  }
+  return deps_count < 0 ? 0 : deps_count;
 }
 
 static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, void *context) {
   GRect bounds = layer_get_bounds(cell_layer);
+
+  if(notes_count > 0 && idx->section == 0) {
+    GRect frame = GRect(4, 2, bounds.size.w - 8, bounds.size.h - 4);
+    graphics_context_set_text_color(ctx, menu_cell_layer_is_highlighted(cell_layer) ? GColorWhite : GColorBlack);
+    graphics_draw_text(ctx, notes[idx->row],
+                       fonts_get_system_font(FONT_KEY_GOTHIC_14),
+                       frame, GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+    return;
+  }
+
 
 #if defined(PBL_ROUND)
   // get info of pixel row in the middle of menu row
@@ -225,12 +248,17 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
 }
 
 static int16_t get_cell_height_callback(struct MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context) {
+  if(notes_count > 0 && cell_index->section == 0)
+    return 48;
   return DEPARTURES_WINDOW_CELL_HEIGHT;
 }
 
 static void select_callback(struct MenuLayer *menu_layer, MenuIndex *idx, void *context) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Selected item %d", (int)idx->row);
-  dep_show(deps_items[idx->row]);
+  if(notes_count > 0 && idx->section == 0)
+    note_show(note_times[idx->row], notes[idx->row], note_bodies[idx->row]);
+  else
+    dep_show(deps_items[idx->row]);
 }
 
 static void main_window_appear(Window *window) {
@@ -282,8 +310,8 @@ static void main_window_unload(Window *window) {
   // Destroy TextLayer
   status_bar_layer_destroy(s_status_bar);
   menu_layer_destroy(s_menu_layer);
-  // Reset number of departures
   deps_count = -1;
+  notes_count = 0;
 }
 
 static void deps_free_items() {
@@ -317,6 +345,7 @@ void deps_deinit() {
 
 void deps_show(int station_id, const char *station_name) {
   strcpy(stationName, station_name);
+  notes_count = 0;
   window_stack_push(departures, true);
   menu_layer_reload_data(s_menu_layer);
   comm_get_deps(station_id, 0);
@@ -329,6 +358,24 @@ void deps_set_count(int count) {
   deps_items = malloc(sizeof(DEP_Item) * count);
   deps_max_count = count;
   deps_count = 0;
+}
+
+void deps_set_note_count(int count) {
+  notes_count = 0;
+  (void)count;
+  menu_layer_reload_data(s_menu_layer);
+}
+
+void deps_set_note(int i, const char *head, const char *body, const char *time_str) {
+  if(i < 0 || i >= MAX_NOTES) return;
+  strncpy(notes[i], head, NOTE_LEN);
+  notes[i][NOTE_LEN] = '\0';
+  strncpy(note_bodies[i], body, BODY_LEN);
+  note_bodies[i][BODY_LEN] = '\0';
+  strncpy(note_times[i], time_str, TIME_LEN);
+  note_times[i][TIME_LEN] = '\0';
+  notes_count = i + 1;
+  menu_layer_reload_data(s_menu_layer);
 }
 
 void deps_set_item(int i, DEP_Item data) {

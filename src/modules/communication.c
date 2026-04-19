@@ -2,6 +2,7 @@
 
 #include <pebble.h>
 
+#include "modules/strings.h"
 #include "windows/departures.h"
 #include "windows/stations.h"
 
@@ -25,9 +26,14 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
       sta_fav_set_count(count);
     } else if(scope == SCOPE_DEPS) {
       deps_set_count(count);
+    } else if(scope == SCOPE_NOTE) {
+      deps_set_note_count(count);
     } else {
       APP_LOG(APP_LOG_LEVEL_DEBUG, "Err!");
     }
+  } else if(code == CODE_UPDATE && scope == SCOPE_LANG) {
+    Tuple *t_lang = dict_find(iter, MESSAGE_KEY_name);
+    if(t_lang) strings_set_language(t_lang->value->cstring);
   } else if(code == CODE_ARRAY_ITEM) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Receiving item");
     int i = (int)dict_find(iter, MESSAGE_KEY_item)->value->uint32;
@@ -45,6 +51,14 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
                               .name = dict_find(iter, MESSAGE_KEY_name)->value->cstring,
                               .distance = 0,
                           });
+    } else if(scope == SCOPE_NOTE) {
+      Tuple *t_note = dict_find(iter, MESSAGE_KEY_note);
+      Tuple *t_body = dict_find(iter, MESSAGE_KEY_body);
+      Tuple *t_time = dict_find(iter, MESSAGE_KEY_time);
+      deps_set_note(i,
+        t_note ? t_note->value->cstring : "",
+        t_body ? t_body->value->cstring : "",
+        t_time ? t_time->value->cstring : "");
     } else if(scope == SCOPE_DEPS) {
       deps_set_item(i, (DEP_Item){
                            .id = dict_find(iter, MESSAGE_KEY_id)->value->uint32,

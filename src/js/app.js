@@ -5,12 +5,16 @@ var customClay = require('./custom-clay');
 var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
 var g_current_favorites = [];
+var g_language = 'en';
+try { g_language = localStorage.getItem('zvv_language') || 'en'; } catch(ex) {}
+var g_show_disruptions = true;
+try { var _d = localStorage.getItem('zvv_disruptions'); if (_d !== null) g_show_disruptions = _d !== '0'; } catch(ex) {}
 
 // var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Uncomment for emulator testing
 var DEBUG_LOCATION;
 
-var CODE = { GET: 10, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
-var SCOPE = { STA: 0, FAV: 1, DEPS: 2 };
+var CODE = { GET: 10, UPDATE: 11, ARRAY_START: 20, ARRAY_ITEM: 21, ARRAY_END: 22 };
+var SCOPE = { STA: 0, FAV: 1, DEPS: 2, NOTE: 3, LANG: 4 };
 
 function buildUrl(base, params) {
   var query = Object.keys(params).map(function(k) {
@@ -122,6 +126,7 @@ function getDeparturesHafas(stationId) {
     type: 'DEP_STATION',    // departures from a station
     duration: 1439,         // time window in minutes (just under 24h)
     maxJourneys: 10,        // max results returned
+    lang: g_language,
     id: stationId
   });
   console.log(url);
@@ -130,12 +135,37 @@ function getDeparturesHafas(stationId) {
       var json = JSON.parse(responseText);
       var departures = json.Departure || [];
 
-      var dict = {
-        [keys.code]: CODE.ARRAY_START,
-        [keys.scope]: SCOPE.DEPS,
-        [keys.count]: departures.length
-      };
-      sendMessage(dict);
+      // Collect notes first so they can be sent before departures
+      var seenMsgIds = {};
+      var notes = [];
+      departures.forEach(function(dep) {
+        if (dep.Messages && dep.Messages.Message) {
+          dep.Messages.Message.forEach(function(msg) {
+            if (!seenMsgIds[msg.id] && msg.head) {
+              seenMsgIds[msg.id] = true;
+              var body = (msg.text || '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .substring(0, 200);
+              var timeStr = '';
+              if (msg.sTime) timeStr += msg.sTime.substring(0, 5);
+              if (msg.eTime) timeStr += '-' + msg.eTime.substring(0, 5);
+              notes.push({ head: msg.head.substring(0, 128), body: body, time: timeStr });
+            }
+          });
+        }
+      });
+
+      // Send notes before departures so they appear first on-watch
+      if (g_show_disruptions && notes.length > 0) {
+        sendMessage({ [keys.code]: CODE.ARRAY_START, [keys.scope]: SCOPE.NOTE,
+                      [keys.count]: notes.length });
+        notes.forEach(function(note, i) {
+          sendMessage({ [keys.code]: CODE.ARRAY_ITEM, [keys.scope]: SCOPE.NOTE, [keys.item]: i,
+                        [keys.note]: note.head, [keys.body]: note.body, [keys.time]: note.time });
+        });
+      }
 
       var mappedDepartures = departures.map(function(dep) {
         var name = '';
@@ -198,9 +228,11 @@ function getDeparturesHafas(stationId) {
         return a.depTimeSecs - b.depTimeSecs;
       });
 
+      sendMessage({ [keys.code]: CODE.ARRAY_START, [keys.scope]: SCOPE.DEPS,
+                    [keys.count]: mappedDepartures.length });
       for(var i = 0; i < mappedDepartures.length; i++) {
         var dep = mappedDepartures[i];
-        dict = {
+        sendMessage({
           [keys.code]: CODE.ARRAY_ITEM,
           [keys.scope]: SCOPE.DEPS,
           [keys.item]: i,
@@ -213,16 +245,10 @@ function getDeparturesHafas(stationId) {
           [keys.delay]: dep.delay,
           [keys.depTime]: dep.depTimeSecs || 0,
           [keys.time]: dep.time
-        };
-        sendMessage(dict);
+        });
       }
-
-      dict = {
-        [keys.code]: CODE.ARRAY_END,
-        [keys.scope]: SCOPE.DEPS,
-        [keys.count]: mappedDepartures.length
-      };
-      sendMessage(dict);
+      sendMessage({ [keys.code]: CODE.ARRAY_END, [keys.scope]: SCOPE.DEPS,
+                    [keys.count]: mappedDepartures.length });
     }
   );
 }
@@ -259,7 +285,12 @@ function handleLocation(lat, lon) {
   }
 }
 
+function sendLanguage() {
+  sendMessage({ [keys.code]: CODE.UPDATE, [keys.scope]: SCOPE.LANG, [keys.name]: g_language });
+}
+
 Pebble.addEventListener("ready", function(e) {
+  sendLanguage();
   // Phase 1: fast low-accuracy fix
   getLocation(false,
     function(pos) {
@@ -309,6 +340,17 @@ Pebble.addEventListener('webviewclosed', function(e) {
   if (!e.response || e.response === 'CANCELLED') return;
   var settings;
   try { settings = clay.getSettings(e.response, false); } catch(ex) { return; }
+  var lang = settings.LANGUAGE && settings.LANGUAGE.value;
+  if (lang) {
+    g_language = lang;
+    try { localStorage.setItem('zvv_language', lang); } catch(ex) {}
+    sendLanguage();
+  }
+  var disruptions = settings.DISRUPTIONS;
+  if (disruptions !== undefined) {
+    g_show_disruptions = !!disruptions.value;
+    try { localStorage.setItem('zvv_disruptions', g_show_disruptions ? '1' : '0'); } catch(ex) {}
+  }
   var raw = settings.FAVORITES && settings.FAVORITES.value;
   if (!raw) return;
   var stations;

@@ -38,4 +38,6 @@ enum {
   SCOPE_STA = 0,
   SCOPE_FAV = 1,
   SCOPE_DEPS = 2,
+  SCOPE_NOTE = 3,
+  SCOPE_LANG = 4,
 };
