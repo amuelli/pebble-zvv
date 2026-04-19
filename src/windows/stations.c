@@ -12,7 +12,7 @@ static int PADDING = 2;
 #elif defined(PBL_ROUND)
 static int PADDING = 0;
 #endif
-char *sectionTitles[] = {"Favourite Stations", "Nearby Stations"};
+char *sectionTitles[] = {"Favorite Stations", "Nearby Stations"};
 
 static Window *stations;
 static MenuLayer *s_menu_layer;

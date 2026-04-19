@@ -39,21 +39,32 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     graphics_draw_line(ctx, GPoint(0, rect_bounds.size.h), GPoint(rect_bounds.size.w, rect_bounds.size.h));
   graphics_context_set_text_color(ctx, COLOR_FALLBACK(color_fg, GColorBlack));
   char *name = dep_item.name;
+  int header_h = rect_bounds.size.h;
   GFont font;
+  int font_h; // approximate rendered line height for each font
   if(strlen(name) <= 2) {
     font = s_helvetic_bold;
+    font_h = 36;
   } else if(strlen(name) == 3) {
     font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
+    font_h = 36;
   } else {
     font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+    font_h = 28;
+  }
+  GRect icon_rect = text_bounds;
+  int y_off = (header_h - font_h) / 2;
+  if(y_off > 0) {
+    icon_rect.origin.y += y_off;
+    icon_rect.size.h -= y_off;
   }
 
   graphics_draw_text(ctx,
                      name,
                      font,
-                     text_bounds,
+                     icon_rect,
                      GTextOverflowModeFill,
-                     PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft),
+                     GTextAlignmentCenter,
                      NULL);
 
   char *direction = dep_item.direction;
@@ -91,49 +102,55 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_text_color(ctx, GColorBlack);
   graphics_context_set_fill_color(ctx, GColorBlack);
 
+  int drawable_h = bounds.size.h - STATUS_BAR_LAYER_HEIGHT;
+  int cy = (drawable_h - 40) / 2; // center 40px countdown on the full screen
+
   if(after) {
     // draw + sign manually (LECO has no + glyph)
     int e_mins = elapsed / 60;
     int e_secs = elapsed % 60;
     int m_w = (e_mins >= 10) ? 2 * DW : DW;
-    int plus_w = 14;
+    int plus_w = 18;
     int total = plus_w + m_w + CW + 2 * DW;
     int x = (bounds.size.w - total) / 2;
-    graphics_fill_rect(ctx, GRect(x + 2, 62, 10, 3), 0, GCornerNone);  // horizontal bar
-    graphics_fill_rect(ctx, GRect(x + 6, 56, 3, 15), 0, GCornerNone);  // vertical bar
+    graphics_fill_rect(ctx, GRect(x + 4, cy + 20, 10, 4), 0, GCornerNone);  // horizontal bar
+    graphics_fill_rect(ctx, GRect(x + 7, cy + 17, 4, 10), 0, GCornerNone);  // vertical bar
     x += plus_w;
     snprintf(s_a, sizeof(s_a), "%d", e_mins);
     snprintf(s_b, sizeof(s_b), "%02d", e_secs);
-    graphics_draw_text(ctx, s_a, leco, GRect(x, 45, m_w, 40),
+    graphics_draw_text(ctx, s_a, leco, GRect(x, cy, m_w, 40),
                        GTextOverflowModeFill, GTextAlignmentLeft, NULL);
     x += m_w;
-    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
-    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 12, 5, 5), 2, GCornersAll);
+    graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 24, 5, 5), 2, GCornersAll);
     x += CW;
-    graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+    graphics_draw_text(ctx, s_b, leco, GRect(x, cy, 2 * DW, 40),
                        GTextOverflowModeFill, GTextAlignmentLeft, NULL);
   } else {
-    // countdown before departure — no icon
+    // countdown before departure
+    int minus_w = 18;
     if(remaining >= 3600) {
       snprintf(s_a, sizeof(s_a), "%d",  remaining / 3600);
       snprintf(s_b, sizeof(s_b), "%02d", (remaining % 3600) / 60);
       snprintf(s_c, sizeof(s_c), "%02d", remaining % 60);
       int h_w = (remaining >= 36000) ? 2 * DW : DW;
-      int total = h_w + CW + 2 * DW + CW + 2 * DW;
+      int total = minus_w + h_w + CW + 2 * DW + CW + 2 * DW;
       int x = (bounds.size.w - total) / 2;
-      graphics_draw_text(ctx, s_a, leco, GRect(x, 45, h_w, 40),
+      graphics_fill_rect(ctx, GRect(x + 2, cy + 20, 10, 4), 0, GCornerNone);  // minus bar
+      x += minus_w;
+      graphics_draw_text(ctx, s_a, leco, GRect(x, cy, h_w, 40),
                          GTextOverflowModeFill, GTextAlignmentLeft, NULL);
       x += h_w;
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 12, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 24, 5, 5), 2, GCornersAll);
       x += CW;
-      graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+      graphics_draw_text(ctx, s_b, leco, GRect(x, cy, 2 * DW, 40),
                          GTextOverflowModeFill, GTextAlignmentLeft, NULL);
       x += 2 * DW;
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 12, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 24, 5, 5), 2, GCornersAll);
       x += CW;
-      graphics_draw_text(ctx, s_c, leco, GRect(x, 45, 2 * DW, 40),
+      graphics_draw_text(ctx, s_c, leco, GRect(x, cy, 2 * DW, 40),
                          GTextOverflowModeFill, GTextAlignmentLeft, NULL);
     } else {
       int mins = remaining / 60;
@@ -141,30 +158,36 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
       snprintf(s_a, sizeof(s_a), "%d",  mins);
       snprintf(s_b, sizeof(s_b), "%02d", secs);
       int m_w = (mins >= 10) ? 2 * DW : DW;
-      int total = m_w + CW + 2 * DW;
+      int total = minus_w + m_w + CW + 2 * DW;
       int x = (bounds.size.w - total) / 2;
-      graphics_draw_text(ctx, s_a, leco, GRect(x, 45, m_w, 40),
+      graphics_fill_rect(ctx, GRect(x + 2, cy + 20, 10, 4), 0, GCornerNone);  // minus bar
+      x += minus_w;
+      graphics_draw_text(ctx, s_a, leco, GRect(x, cy, m_w, 40),
                          GTextOverflowModeFill, GTextAlignmentLeft, NULL);
       x += m_w;
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 57, 5, 5), 2, GCornersAll);
-      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, 69, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 12, 5, 5), 2, GCornersAll);
+      graphics_fill_rect(ctx, GRect(x + CW/2 - 2, cy + 24, 5, 5), 2, GCornersAll);
       x += CW;
-      graphics_draw_text(ctx, s_b, leco, GRect(x, 45, 2 * DW, 40),
+      graphics_draw_text(ctx, s_b, leco, GRect(x, cy, 2 * DW, 40),
                          GTextOverflowModeFill, GTextAlignmentLeft, NULL);
     }
   }
 
   if(show_icon) {
-    GRect icon_bounds = GRect(0, 95, bounds.size.w, bounds.size.h - 38);
+    int icon_y = cy + 40;
+    GRect icon_bounds = GRect(0, icon_y, bounds.size.w, drawable_h - icon_y);
     char *icon_number;
     if(strcmp(dep_item.icon, "bus") == 0 ||
        strcmp(dep_item.icon, "nachtbus") == 0) {
       icon_number = "1";
     } else if(strcmp(dep_item.icon, "tram") == 0) {
       icon_number = "2";
-    } else if(strcmp(dep_item.icon, "train") == 0) {
+    } else if(strcmp(dep_item.icon, "train") == 0 ||
+              strcmp(dep_item.icon, "s-bahn") == 0 ||
+              strcmp(dep_item.icon, "interregio") == 0) {
       icon_number = "3";
-    } else if(strcmp(dep_item.icon, "boat") == 0) {
+    } else if(strcmp(dep_item.icon, "boat") == 0 ||
+              strcmp(dep_item.icon, "schiff") == 0) {
       icon_number = "4";
     } else if(strcmp(dep_item.icon, "funicular") == 0) {
       icon_number = "5";

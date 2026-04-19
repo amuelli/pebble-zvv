@@ -124,9 +124,12 @@ static void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *idx, 
       icon_number = "1";
     } else if(strcmp(deps_items[idx->row].icon, "tram") == 0) {
       icon_number = "2";
-    } else if(strcmp(deps_items[idx->row].icon, "train") == 0) {
+    } else if(strcmp(deps_items[idx->row].icon, "train") == 0 ||
+              strcmp(deps_items[idx->row].icon, "s-bahn") == 0 ||
+              strcmp(deps_items[idx->row].icon, "interregio") == 0) {
       icon_number = "3";
-    } else if(strcmp(deps_items[idx->row].icon, "boat") == 0) {
+    } else if(strcmp(deps_items[idx->row].icon, "boat") == 0 ||
+              strcmp(deps_items[idx->row].icon, "schiff") == 0) {
       icon_number = "4";
     } else if(strcmp(deps_items[idx->row].icon, "funicular") == 0) {
       icon_number = "5";

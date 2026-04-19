@@ -2,7 +2,9 @@
   "version": "1.1.0",
   "author": "Alexander Mülli",
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "@rebble/clay": "^1.0.8"
+  },
   "keywords": [
     "pebble-app"
   ],
@@ -58,7 +60,8 @@
       "time",
       "delay",
       "depTime",
-      "distance"
+      "distance",
+      "FAVORITES"
     ],
     "enableMultiJS": true,
     "displayName": "ZVV",

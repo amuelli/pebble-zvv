@@ -1,7 +1,10 @@
 var keys = require('message_keys');
-var configHtml = require('./config_html');
+var Clay = require('@rebble/clay');
+var clayConfig = require('./config');
+var customClay = require('./custom-clay');
+var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
-var g_current_favourites = [];
+var g_current_favorites = [];
 
 // var DEBUG_LOCATION = { lat: 47.3783, lon: 8.5403 }; // Uncomment for emulator testing
 var DEBUG_LOCATION;
@@ -299,40 +302,34 @@ Pebble.addEventListener("appmessage", function(e) {
 });
 
 Pebble.addEventListener('showConfiguration', function(e) {
-  try {
-    var stored = localStorage.getItem('zvv_favorites');
-    if (stored) g_current_favourites = JSON.parse(stored);
-  } catch(ex) {}
-  var initData = JSON.stringify({ favourites: g_current_favourites });
-  var pageHtml = configHtml.replace(
-    'null; /* __INITIAL_DATA_PLACEHOLDER__ */',
-    initData + ';'
-  );
-  Pebble.openURL('data:text/html;charset=utf-8,' + encodeURIComponent(pageHtml));
+  Pebble.openURL(clay.generateUrl());
 });
 
 Pebble.addEventListener('webviewclosed', function(e) {
   if (!e.response || e.response === 'CANCELLED') return;
-  var config_data;
-  try { config_data = JSON.parse(decodeURIComponent(e.response)); } catch(ex) { return; }
-  console.log('Config window returned: ' + JSON.stringify(config_data));
-  var stations = config_data.stations || [];
-  g_current_favourites = stations;
+  var settings;
+  try { settings = clay.getSettings(e.response, false); } catch(ex) { return; }
+  var raw = settings.FAVORITES && settings.FAVORITES.value;
+  if (!raw) return;
+  var stations;
+  try { stations = JSON.parse(raw); } catch(ex) { return; }
+  if (!Array.isArray(stations)) return;
+  console.log('Config window returned: ' + stations.length + ' stations');
+  g_current_favorites = stations;
   try { localStorage.setItem('zvv_favorites', JSON.stringify(stations)); } catch(ex) {}
   var dict = {};
   dict[keys.code] = CODE.ARRAY_START;
   dict[keys.scope] = SCOPE.FAV;
   dict[keys.count] = stations.length;
   sendMessage(dict);
-  for( var i = 0; i < stations.length; i++) {
+  for (var i = 0; i < stations.length; i++) {
     var station = stations[i];
     station.name = cleanStationName(station.name);
-
     dict = {};
     dict[keys.code] = CODE.ARRAY_ITEM;
     dict[keys.scope] = SCOPE.FAV;
     dict[keys.item] = i;
-    dict[keys.id] = parseInt(station.id,10);
+    dict[keys.id] = parseInt(station.id, 10);
     dict[keys.name] = station.name;
     console.log(JSON.stringify(dict));
     sendMessage(dict);

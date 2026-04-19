@@ -3,7 +3,6 @@
 #
 # Feel free to customize this to your needs.
 #
-import json
 import os.path
 
 top = '.'
@@ -24,16 +23,7 @@ def configure(ctx):
     ctx.load('pebble_sdk')
 
 
-def generate_config_html_js():
-    with open('src/js/config.html', 'r') as f:
-        html = f.read()
-    with open('src/js/config_html.js', 'w') as f:
-        f.write('module.exports = {};\n'.format(json.dumps(html)))
-
-
 def build(ctx):
-    generate_config_html_js()
-
     ctx.load('pebble_sdk')
 
     build_worker = os.path.exists('worker_src')
