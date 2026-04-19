@@ -5,8 +5,18 @@ var customClay = require('./custom-clay');
 var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
 var g_current_favorites = [];
-var g_language = 'en';
-try { g_language = localStorage.getItem('zvv_language') || 'en'; } catch(ex) {}
+
+function detectSystemLanguage() {
+  var supported = ['de', 'fr', 'it'];
+  var lang = (navigator.language || '').toLowerCase().split(/[-_]/)[0];
+  return supported.indexOf(lang) >= 0 ? lang : 'en';
+}
+
+var g_language = (function() {
+  var stored;
+  try { stored = localStorage.getItem('zvv_language'); } catch(ex) {}
+  return (!stored || stored === 'auto') ? detectSystemLanguage() : stored;
+})();
 var g_show_disruptions = true;
 try { var _d = localStorage.getItem('zvv_disruptions'); if (_d !== null) g_show_disruptions = _d !== '0'; } catch(ex) {}
 
@@ -341,9 +351,9 @@ Pebble.addEventListener('webviewclosed', function(e) {
   var settings;
   try { settings = clay.getSettings(e.response, false); } catch(ex) { return; }
   var lang = settings.LANGUAGE && settings.LANGUAGE.value;
-  if (lang) {
-    g_language = lang;
+  if (lang !== undefined && lang !== null) {
     try { localStorage.setItem('zvv_language', lang); } catch(ex) {}
+    g_language = (lang === 'auto' || !lang) ? detectSystemLanguage() : lang;
     sendLanguage();
   }
   var disruptions = settings.DISRUPTIONS;

@@ -4,18 +4,6 @@ module.exports = [
     defaultValue: 'Settings'
   },
   {
-    type: 'select',
-    messageKey: 'LANGUAGE',
-    label: 'Language',
-    defaultValue: 'en',
-    options: [
-      { label: 'English', value: 'en' },
-      { label: 'Deutsch', value: 'de' },
-      { label: 'Français', value: 'fr' },
-      { label: 'Italiano', value: 'it' }
-    ]
-  },
-  {
     type: 'heading',
     defaultValue: 'Favorite Stations'
   },
@@ -35,6 +23,19 @@ module.exports = [
     messageKey: 'DISRUPTIONS',
     label: 'Show disruption notices',
     defaultValue: true
+  },
+  {
+    type: 'select',
+    messageKey: 'LANGUAGE',
+    label: 'Language',
+    defaultValue: 'auto',
+    options: [
+      { label: 'Auto (system)', value: 'auto' },
+      { label: 'English', value: 'en' },
+      { label: 'Deutsch', value: 'de' },
+      { label: 'Français', value: 'fr' },
+      { label: 'Italiano', value: 'it' }
+    ]
   },
   {
     type: 'submit',
